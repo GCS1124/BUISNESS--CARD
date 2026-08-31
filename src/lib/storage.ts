@@ -3,7 +3,7 @@ import type { AppUser, Card, CardBundle, CardField, DesignSettings, FieldType } 
 const cardsKey = 'cardly.cards.v1'
 const userKey = 'cardly.user.v1'
 
-export const makeId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
+export const makeId = () => typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (token) => { const random = Math.random() * 16 | 0; const value = token === 'x' ? random : random & 3 | 8; return value.toString(16) })
 
 export const slugify = (value: string) =>
   value

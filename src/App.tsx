@@ -96,6 +96,7 @@ export default function App() {
   const [saveError, setSaveError] = useState('')
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
+  const canPersistRemote = Boolean(isSupabaseConfigured && supabase && user && user.id !== defaultUser.id)
 
   const showToast = (message: string, tone: 'success' | 'error' = 'success') => {
     setToast({ message, tone })
@@ -159,14 +160,22 @@ export default function App() {
 
   const updateBundle = (nextBundle: CardBundle, persist = true) => {
     const withTimestamp = { ...nextBundle, card: { ...nextBundle.card, updatedAt: new Date().toISOString() } }
-    setBundles((current) => current.map((bundle) => bundle.card.id === withTimestamp.card.id ? withTimestamp : bundle))
-    writeLocalBundles(bundles.map((bundle) => bundle.card.id === withTimestamp.card.id ? withTimestamp : bundle))
-    if (persist && isSupabaseConfigured) {
+    setBundles((current) => {
+      const next = current.map((bundle) => bundle.card.id === withTimestamp.card.id ? withTimestamp : bundle)
+      writeLocalBundles(next)
+      return next
+    })
+    if (persist && canPersistRemote) {
       setSaveState('saving')
       setSaveError('')
       if (saveTimer.current) window.clearTimeout(saveTimer.current)
       saveTimer.current = window.setTimeout(() => {
-        void persistRemoteBundle(withTimestamp).then(() => setSaveState('saved')).catch((error) => { setSaveState('error'); setSaveError(error instanceof Error ? error.message : 'Unable to save changes.') })
+        void persistRemoteBundle(withTimestamp).then(() => setSaveState('saved')).catch((error) => {
+          const message = error instanceof Error ? error.message : 'Unable to save changes.'
+          setSaveState('error')
+          setSaveError(message)
+          showToast('Could not save changes. Please try again.', 'error')
+        })
       }, 700)
     } else setSaveState('saved')
   }
@@ -177,11 +186,18 @@ export default function App() {
     const now = new Date().toISOString()
     const card: Card = { id, userId: user.id, cardName: 'Untitled card', slug: `my-card-${id.slice(-4)}`, theme: 'Professional', design: { ...defaultDesign }, isPublished: false, createdAt: now, updatedAt: now }
     const bundle = { card, fields: [] }
-    setBundles((current) => [...current, bundle])
-    writeLocalBundles([...bundles, bundle])
-    if (isSupabaseConfigured) {
+    setBundles((current) => {
+      const next = [...current, bundle]
+      writeLocalBundles(next)
+      return next
+    })
+    if (canPersistRemote) {
       setSaveState('saving')
-      void persistRemoteBundle(bundle).then(() => setSaveState('saved')).catch(() => setSaveState('error'))
+      void persistRemoteBundle(bundle).then(() => setSaveState('saved')).catch((error) => {
+        setSaveState('error')
+        setSaveError(error instanceof Error ? error.message : 'Unable to save this card.')
+        showToast('Could not save this card. Please try again.', 'error')
+      })
     }
     navigate('builder', id)
   }
@@ -198,20 +214,29 @@ export default function App() {
       { fieldType: 'headline', category: 'Personal', label: 'Headline', value: template.headline, iconKey: 'sparkles' },
     ]
     const bundle: CardBundle = { card, fields: starterFields.map((field, sortOrder) => ({ ...field, id: makeId(), cardId: id, metadata: {}, sortOrder, isVisible: true })) }
-    setBundles((current) => [...current, bundle])
-    writeLocalBundles([...bundles, bundle])
-    if (isSupabaseConfigured) {
+    setBundles((current) => {
+      const next = [...current, bundle]
+      writeLocalBundles(next)
+      return next
+    })
+    if (canPersistRemote) {
       setSaveState('saving')
-      void persistRemoteBundle(bundle).then(() => setSaveState('saved')).catch(() => setSaveState('error'))
+      void persistRemoteBundle(bundle).then(() => setSaveState('saved')).catch((error) => {
+        setSaveState('error')
+        setSaveError(error instanceof Error ? error.message : 'Unable to save this card.')
+        showToast('Could not save this card. Please try again.', 'error')
+      })
     }
     navigate('builder', id)
   }
 
   const deleteCard = async (cardId: string) => {
-    setBundles((current) => current.filter((bundle) => bundle.card.id !== cardId))
-    const next = bundles.filter((bundle) => bundle.card.id !== cardId)
-    writeLocalBundles(next)
-    if (isSupabaseConfigured) {
+    setBundles((current) => {
+      const next = current.filter((bundle) => bundle.card.id !== cardId)
+      writeLocalBundles(next)
+      return next
+    })
+    if (canPersistRemote) {
       try { await deleteRemoteBundle(cardId) } catch { showToast('The card was removed locally, but could not be removed remotely.', 'error') }
     }
     showToast('Card deleted')
@@ -441,20 +466,20 @@ function Builder({ bundle, user, saveState, saveError, onBack, onUpdate, onToast
     <div className="builder-mobile-tabs"><button className={mobileView === 'edit' ? 'active' : ''} onClick={() => setMobileView('edit')}><PanelLeft size={15} /> Edit</button><button className={mobileView === 'preview' ? 'active' : ''} onClick={() => setMobileView('preview')}><Eye size={15} /> Preview</button></div>
     <main className="builder-main">
       <section className={`preview-column ${mobileView === 'edit' ? 'mobile-hidden' : ''} `}><div className="preview-kicker"><div><p className="eyebrow">Live preview</p><h2>How it looks to others</h2></div><button className="preview-share" onClick={copyLink}><Share2 size={14} /> Share</button></div><div className="preview-stage"><PhonePreview bundle={bundle} onShare={copyLink} /><div className="preview-stage-note"><span className="live-dot" /> Updates as you edit</div></div><div className="preview-bottom-card"><div><p className="eyebrow">Public link</p><strong>cardly.me/{bundle.card.slug}</strong></div><button className="icon-button" onClick={copyLink} aria-label="Copy public link"><Copy size={15} /></button></div></section>
-      <section className={`editor-column ${mobileView === 'preview' ? 'mobile-hidden' : ''}`}><div className="builder-tabs"><button className={panel === 'edit' ? 'active' : ''} onClick={() => setPanel('edit')}><PanelLeft size={15} /> Edit fields</button><button className={panel === 'design' ? 'active' : ''} onClick={() => setPanel('design')}><Palette size={15} /> Design</button></div>{panel === 'edit' ? <div className="field-editor-panel"><div className="panel-heading"><div><p className="eyebrow">Build your card</p><h2>Add the details that matter.</h2><p>Choose a field to add it to your card. You can edit, hide, or reorder anything later.</p></div><div className="field-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a field" /></div></div><div className="active-fields-section"><div className="subsection-heading"><div><p className="eyebrow">On your card</p><h3>{bundle.fields.length} fields <span>· Drag to reorder</span></h3></div><span className="active-count"><Check size={13} /> Live</span></div>{bundle.fields.length === 0 ? <div className="active-empty"><PanelLeft size={18} /><p>Your card is waiting for its first detail.</p><span>Start with your name below.</span></div> : <div className="active-fields-list">{[...bundle.fields].sort((a, b) => a.sortOrder - b.sortOrder).map((field, index) => <ActiveField key={field.id} field={field} index={index} total={bundle.fields.length} editing={editor?.location === 'active' && editor.field?.id === field.id} onDragStart={() => setDraggingId(field.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (draggingId) reorder(draggingId, field.id); setDraggingId(null) }} onEdit={() => editField(field)} onDelete={() => setConfirmField(field)} onToggle={() => toggleField(field)} onMove={moveField} onCancel={() => setEditor(null)} onSave={saveField} />)}</div>}</div><div className="field-library">{categoryOrder.map((category) => { const definitions = visibleDefinitions.filter((definition) => definition.category === category); if (!definitions.length) return null; const expanded = openCategories[category]; return <div className="field-category" key={category}><button className="category-heading" onClick={() => setOpenCategories((current) => ({ ...current, [category]: !current[category] }))}><span>{category}</span><span className="category-meta">{definitions.reduce((total, definition) => total + (activeByType.get(definition.type)?.length ?? 0), 0) || ''}<ChevronDown size={16} className={expanded ? 'rotate' : ''} /></span></button>{expanded && <div className="field-options">{definitions.map((definition) => { const libraryEditor = editor?.location === 'library' && editor.definition.type === definition.type; const libraryField = libraryEditor ? editor.field : undefined; return <FieldOption key={definition.type} definition={definition} count={activeByType.get(definition.type)?.length ?? 0} editing={libraryEditor} editingField={libraryField} onAdd={() => addField(definition)} onEdit={() => { const first = activeByType.get(definition.type)?.[0]; if (first) editLibraryField(first) }} onCancel={() => setEditor(null)} onSave={saveField} /> })}</div>}</div>})}</div></div> : <DesignPanel bundle={bundle} onUpdate={update} onAsset={handleAsset} assetBusy={assetBusy} slug={slug} slugEditing={slugEditing} onSlugChange={(next) => { setSlug(next); update({ slug: slugify(next) }) }} onSlugEditing={setSlugEditing} onToast={onToast} setShowQr={setShowQr} />}</section>
+      <section className={`editor-column ${mobileView === 'preview' ? 'mobile-hidden' : ''}`}><div className="builder-tabs"><button className={panel === 'edit' ? 'active' : ''} onClick={() => setPanel('edit')}><PanelLeft size={15} /> Edit fields</button><button className={panel === 'design' ? 'active' : ''} onClick={() => setPanel('design')}><Palette size={15} /> Design</button></div>{panel === 'edit' ? <div className="field-editor-panel"><div className="panel-heading"><div><p className="eyebrow">Build your card</p><h2>Add the details that matter.</h2><p>Choose a field to add it to your card. You can edit, hide, or reorder anything later.</p></div><div className="field-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a field" /></div></div><div className="active-fields-section"><div className="subsection-heading"><div><p className="eyebrow">On your card</p><h3>{bundle.fields.length} fields <span>· Drag to reorder</span></h3></div><span className="active-count"><Check size={13} /> Live</span></div>{bundle.fields.length === 0 ? <div className="active-empty"><PanelLeft size={18} /><p>Your card is waiting for its first detail.</p><span>Start with your name below.</span></div> : <div className="active-fields-list">{[...bundle.fields].sort((a, b) => a.sortOrder - b.sortOrder).map((field, index) => <ActiveField key={field.id} field={field} index={index} total={bundle.fields.length} dragging={draggingId === field.id} editing={editor?.location === 'active' && editor.field?.id === field.id} onDragStart={() => setDraggingId(field.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (draggingId) reorder(draggingId, field.id); setDraggingId(null) }} onEdit={() => editField(field)} onDelete={() => setConfirmField(field)} onToggle={() => toggleField(field)} onMove={moveField} onCancel={() => setEditor(null)} onSave={saveField} />)}</div>}</div><div className="field-library">{categoryOrder.map((category) => { const definitions = visibleDefinitions.filter((definition) => definition.category === category); if (!definitions.length) return null; const expanded = openCategories[category]; return <div className="field-category" key={category}><button className="category-heading" onClick={() => setOpenCategories((current) => ({ ...current, [category]: !current[category] }))}><span>{category}</span><span className="category-meta">{definitions.reduce((total, definition) => total + (activeByType.get(definition.type)?.length ?? 0), 0) || ''}<ChevronDown size={16} className={expanded ? 'rotate' : ''} /></span></button>{expanded && <div className="field-options">{definitions.map((definition) => { const libraryEditor = editor?.location === 'library' && editor.definition.type === definition.type; const libraryField = libraryEditor ? editor.field : undefined; return <FieldOption key={definition.type} definition={definition} count={activeByType.get(definition.type)?.length ?? 0} editing={libraryEditor} editingField={libraryField} onAdd={() => addField(definition)} onEdit={() => { const first = activeByType.get(definition.type)?.[0]; if (first) editLibraryField(first) }} onCancel={() => setEditor(null)} onSave={saveField} /> })}</div>}</div>})}</div></div> : <DesignPanel bundle={bundle} onUpdate={update} onAsset={handleAsset} assetBusy={assetBusy} slug={slug} slugEditing={slugEditing} onSlugChange={(next) => { setSlug(next); update({ slug: slugify(next) }) }} onSlugEditing={setSlugEditing} onToast={onToast} setShowQr={setShowQr} />}</section>
     </main>
     {confirmField && <ConfirmDialog title={`Remove ${confirmField.label || definitionFor(confirmField.fieldType).label}?`} description="This field will disappear from the card immediately. You can add it again any time." confirmLabel="Remove field" onCancel={() => setConfirmField(null)} onConfirm={deleteField} />}
     {showQr && <QrModal bundle={bundle} onClose={() => setShowQr(false)} onToast={onToast} />}
   </div>
 }
 
-function FieldOption({ definition, count, onAdd, onEdit }: { definition: FieldDefinition; count: number; onAdd: () => void; onEdit: () => void }) {
-  return <div className={`field-option ${count ? 'field-option-active' : ''}`}><IconBadge iconKey={definition.iconKey} size="sm" /><div className="field-option-copy"><strong>{definition.label}</strong><span>{count ? `${count} added${definition.multiple ? ' · Add another' : ' · Edit below'}` : definition.description}</span></div>{count && !definition.multiple ? <button className="field-option-state" onClick={onEdit}>Edit <Edit3 size={13} /></button> : <button className="add-field-button" onClick={onAdd} aria-label={`Add ${definition.label}`}><Plus size={17} /></button>}</div>
+function FieldOption({ definition, count, editing, editingField, onAdd, onEdit, onCancel, onSave }: { definition: FieldDefinition; count: number; editing: boolean; editingField?: CardField; onAdd: () => void; onEdit: () => void; onCancel: () => void; onSave: (data: Omit<CardField, 'id' | 'cardId' | 'sortOrder' | 'isVisible'>) => void }) {
+  return <div className={`field-option-wrap ${editing ? 'field-option-wrap-expanded' : ''}`}><div className={`field-option ${count ? 'field-option-active' : ''}`}><IconBadge iconKey={definition.iconKey} size="sm" /><div className="field-option-copy"><strong>{definition.label}</strong><span>{count ? `${count} added${definition.multiple ? ' · Add another' : ' · Edit below'}` : definition.description}</span></div>{editing ? <button className="add-field-button" onClick={onCancel} aria-label={`Cancel ${definition.label} editor`}><X size={16} /></button> : count && !definition.multiple ? <button className="field-option-state" onClick={onEdit}>Edit <Edit3 size={13} /></button> : <button className="add-field-button" onClick={onAdd} aria-label={`Add ${definition.label}`}><Plus size={17} /></button>}</div>{editing && <InlineFieldEditor definition={definition} field={editingField} onCancel={onCancel} onSave={onSave} />}</div>
 }
 
-function ActiveField({ field, index, total, dragging, onDragStart, onDragEnd, onDrop, onEdit, onDelete, onToggle, onMove }: { field: CardField; index: number; total: number; dragging: boolean; onDragStart: () => void; onDragEnd: () => void; onDrop: () => void; onEdit: () => void; onDelete: () => void; onToggle: () => void; onMove: (id: string, direction: -1 | 1) => void }) {
+function ActiveField({ field, index, total, dragging, editing, onDragStart, onDragEnd, onDrop, onEdit, onDelete, onToggle, onMove, onCancel, onSave }: { field: CardField; index: number; total: number; dragging: boolean; editing: boolean; onDragStart: () => void; onDragEnd: () => void; onDrop: () => void; onEdit: () => void; onDelete: () => void; onToggle: () => void; onMove: (id: string, direction: -1 | 1) => void; onCancel: () => void; onSave: (data: Omit<CardField, 'id' | 'cardId' | 'sortOrder' | 'isVisible'>) => void }) {
   const definition = definitionFor(field.fieldType)
-  return <div className={`active-field ${dragging ? 'active-field-dragging' : ''} ${!field.isVisible ? 'active-field-hidden' : ''}`} draggable onDragStart={onDragStart} onDragEnd={onDragEnd} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}><button className="drag-handle" aria-label={`Drag ${field.label}`}><span /><span /><span /></button><IconBadge iconKey={field.metadata.iconKey || field.iconKey} size="sm" tone="neutral" /><div className="active-field-copy"><strong>{field.label || definition.label}</strong><span>{field.value || 'No value yet'}</span></div><div className="active-field-actions"><button className="mini-action" onClick={onToggle} aria-label={field.isVisible ? 'Hide field' : 'Show field'}>{field.isVisible ? <Eye size={14} /> : <EyeOff size={14} />}</button><button className="mini-action" onClick={onEdit} aria-label="Edit field"><Edit3 size={14} /></button><div className="reorder-actions"><button disabled={index === 0} onClick={() => onMove(field.id, -1)} aria-label="Move field up">↑</button><button disabled={index === total - 1} onClick={() => onMove(field.id, 1)} aria-label="Move field down">↓</button></div><button className="mini-action mini-action-danger" onClick={onDelete} aria-label="Delete field"><Trash2 size={14} /></button></div></div>
+  return <div className={`active-field ${dragging ? 'active-field-dragging' : ''} ${!field.isVisible ? 'active-field-hidden' : ''} ${editing ? 'active-field-editing' : ''}`} draggable={!editing} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}>{editing ? <InlineFieldEditor definition={definition} field={field} onCancel={onCancel} onSave={onSave} /> : <><button className="drag-handle" aria-label={`Drag ${field.label}`}><span /><span /><span /></button><IconBadge iconKey={field.metadata.iconKey || field.iconKey} size="sm" tone="neutral" /><div className="active-field-copy"><strong>{field.label || definition.label}</strong><span>{field.value || 'No value yet'}</span></div><div className="active-field-actions"><button className="mini-action" onClick={onToggle} aria-label={field.isVisible ? 'Hide field' : 'Show field'}>{field.isVisible ? <Eye size={14} /> : <EyeOff size={14} />}</button><button className="mini-action" onClick={onEdit} aria-label="Edit field"><Edit3 size={14} /></button><div className="reorder-actions"><button disabled={index === 0} onClick={() => onMove(field.id, -1)} aria-label="Move field up">↑</button><button disabled={index === total - 1} onClick={() => onMove(field.id, 1)} aria-label="Move field down">↓</button></div><button className="mini-action mini-action-danger" onClick={onDelete} aria-label="Delete field"><Trash2 size={14} /></button></div></>}</div>
 }
 
 interface DesignPanelProps {

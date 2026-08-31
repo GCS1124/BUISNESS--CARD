@@ -112,7 +112,7 @@ export function InlineFieldEditor({ definition, field, onCancel, onSave }: Inlin
         <label className="field-label">State / region<input value={metadata.state ?? ''} onChange={(event) => updateMeta('state', event.target.value)} placeholder="CA" /></label>
         <label className="field-label">ZIP / postal code<input value={metadata.postalCode ?? ''} onChange={(event) => updateMeta('postalCode', event.target.value)} placeholder="94105" /></label>
         <label className="field-label">Country<input value={metadata.country ?? ''} onChange={(event) => updateMeta('country', event.target.value)} placeholder="United States" /></label>
-      </div> : <div className="field-inline-value-wrap">
+      </div> : <div className={`field-inline-value-wrap ${isPhone ? 'field-inline-value-wrap-phone' : ''}`}>
         {isPhone && <label className="field-label">Country code<input value={metadata.countryCode ?? ''} onChange={(event) => updateMeta('countryCode', event.target.value)} placeholder="+1" /></label>}
         <label className="field-label">{isCustomButton ? 'Button label' : definition.type === 'custom_text' ? 'Text' : definition.type === 'email' ? 'Email address' : urlTypes.has(definition.type) ? 'URL or handle' : 'Value'}<input value={value} onChange={(event) => setValue(event.target.value)} placeholder={placeholderFor(definition.type)} inputMode={isPhone ? 'tel' : undefined} /></label>
         {isCustomButton && <label className="field-label">Button destination<input value={metadata.url ?? ''} onChange={(event) => updateMeta('url', event.target.value)} placeholder="https://example.com/book" /></label>}
