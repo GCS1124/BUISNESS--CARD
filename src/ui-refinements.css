@@ -204,6 +204,20 @@ body { background: #f7f8f3; }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+/* Keep the desktop builder anchored while the long editor remains independently scrollable. */
+@media (min-width: 841px) {
+  .builder-shell { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+  .builder-header { position: relative; flex: 0 0 72px; }
+  .builder-main { height: calc(100vh - 72px); height: calc(100dvh - 72px); min-height: 0; overflow: hidden; }
+  .preview-column { position: relative; top: auto; height: 100%; min-height: 0; }
+  .editor-column { height: 100%; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .editor-column .builder-tabs { position: sticky; z-index: 4; top: 0; background: rgba(255, 255, 255, .95); backdrop-filter: blur(12px); }
+  .editor-column::-webkit-scrollbar { width: 10px; }
+  .editor-column::-webkit-scrollbar-track { background: #f7faf6; }
+  .editor-column::-webkit-scrollbar-thumb { border: 3px solid #f7faf6; border-radius: 999px; background: #c8daca; }
+  .editor-column::-webkit-scrollbar-thumb:hover { background: #a8c5af; }
+}
+
 /* Templates + insights workspace sections */
 .workspace-page-main { min-height: 100vh; }
 .workspace-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 24px 27px; border: 1px solid rgba(219, 231, 219, .86); border-radius: 22px; background: rgba(255, 255, 252, .73); box-shadow: 0 10px 28px rgba(46, 74, 54, .045); backdrop-filter: blur(12px); }
