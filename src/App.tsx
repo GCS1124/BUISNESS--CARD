@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  BarChart3,
   Check,
   ChevronDown,
   ChevronRight,
@@ -17,6 +18,7 @@ import {
   FileText,
   Grid2X2,
   KeyRound,
+  Lightbulb,
   LayoutTemplate,
   Link2,
   LogOut,
@@ -31,6 +33,7 @@ import {
   Share2,
   Sparkles,
   Trash2,
+  TrendingUp,
   Upload,
   UserRound,
   X,
@@ -46,7 +49,7 @@ import { createSeedBundle, defaultDesign, defaultUser, makeId, readLocalBundles,
 import { deleteRemoteBundle, isSupabaseConfigured, loadPublicBundle, loadRemoteBundles, persistRemoteBundle, remoteCardUrl, supabase, uploadCardAsset } from './lib/supabase'
 import type { AppUser, Card, CardBundle, CardField, DesignSettings, FieldCategory, FieldDefinition, FieldType } from './lib/types'
 
-type AppRoute = 'dashboard' | 'builder' | 'public' | 'reset' | 'overview'
+type AppRoute = 'dashboard' | 'builder' | 'public' | 'reset' | 'overview' | 'templates' | 'insights'
 type SaveState = 'saved' | 'saving' | 'error'
 type CardUpdate = Omit<Partial<Card>, 'design'> & { design?: Partial<DesignSettings> }
 
@@ -59,12 +62,25 @@ const themePresets: Array<{ name: string; description: string; design: Partial<D
   { name: 'Creative', description: 'Bold enough to be yours', design: { headerColor: '#ffd4aa', cardBackground: '#fffdf8', accentColor: '#e25b35', textColor: '#321e18', mode: 'light' }, swatches: ['#ffd4aa', '#e25b35'] },
 ]
 
+type CardTemplate = { id: string; name: string; category: string; description: string; useCase: string; design: Partial<DesignSettings>; role: string; company: string; headline: string; featured?: boolean }
+
+const cardTemplates: CardTemplate[] = [
+  { id: 'professional', name: 'Professional', category: 'Best for teams', description: 'Clear, capable, and considered.', useCase: 'For consultants, operators, and client-facing work.', design: themePresets[0].design, role: 'Your role', company: 'Your company', headline: 'A thoughtful introduction, ready to share.', featured: true },
+  { id: 'minimal', name: 'Minimal', category: 'Quiet confidence', description: 'A calm canvas for focused work.', useCase: 'For creators who let their work do the talking.', design: themePresets[1].design, role: 'Designer & maker', company: 'Independent', headline: 'Less noise. More signal.' },
+  { id: 'modern', name: 'Modern', category: 'Fresh & direct', description: 'Bright, energetic, and easy to scan.', useCase: 'For fast-moving founders and fresh ideas.', design: themePresets[2].design, role: 'Product founder', company: 'New venture', headline: 'Building what comes next.' },
+  { id: 'dark', name: 'Dark', category: 'A little more edge', description: 'A confident look with high contrast.', useCase: 'For studios, developers, and bold personal brands.', design: themePresets[3].design, role: 'Creative developer', company: 'Digital studio', headline: 'Ideas with a point of view.' },
+  { id: 'executive', name: 'Executive', category: 'Crisp & trusted', description: 'Warm details with a polished finish.', useCase: 'For leaders, advisors, and senior operators.', design: themePresets[4].design, role: 'Strategy advisor', company: 'Private practice', headline: 'Making complex things feel simple.' },
+  { id: 'creative', name: 'Creative', category: 'Bold & expressive', description: 'A little more personality in every detail.', useCase: 'For artists, marketers, and culture builders.', design: themePresets[5].design, role: 'Creative director', company: 'Studio practice', headline: 'Making useful things feel alive.' },
+]
+
 const routeFromLocation = (): { route: AppRoute; id?: string } => {
   const path = window.location.pathname
   if (path.startsWith('/builder/')) return { route: 'builder', id: decodeURIComponent(path.split('/')[2] ?? '') }
   if (path.startsWith('/card/')) return { route: 'public', id: decodeURIComponent(path.split('/')[2] ?? '') }
   if (path.startsWith('/reset-password')) return { route: 'reset' }
   if (path.startsWith('/overview')) return { route: 'overview' }
+  if (path.startsWith('/templates')) return { route: 'templates' }
+  if (path.startsWith('/insights')) return { route: 'insights' }
   return { route: 'dashboard' }
 }
 
@@ -134,7 +150,7 @@ export default function App() {
   }, [])
 
   const navigate = (nextRoute: AppRoute, id?: string) => {
-    const path = nextRoute === 'dashboard' ? '/' : nextRoute === 'builder' ? `/builder/${id}` : `/card/${id}`
+    const path = nextRoute === 'dashboard' ? '/' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : `/${nextRoute}`
     window.history.pushState({}, '', path)
     setRoute(nextRoute)
     setRouteId(id)
@@ -161,6 +177,27 @@ export default function App() {
     const now = new Date().toISOString()
     const card: Card = { id, userId: user.id, cardName: 'Untitled card', slug: `my-card-${id.slice(-4)}`, theme: 'Professional', design: { ...defaultDesign }, isPublished: false, createdAt: now, updatedAt: now }
     const bundle = { card, fields: [] }
+    setBundles((current) => [...current, bundle])
+    writeLocalBundles([...bundles, bundle])
+    if (isSupabaseConfigured) {
+      setSaveState('saving')
+      void persistRemoteBundle(bundle).then(() => setSaveState('saved')).catch(() => setSaveState('error'))
+    }
+    navigate('builder', id)
+  }
+
+  const createCardFromTemplate = (template: CardTemplate) => {
+    if (!user) return
+    const id = makeId()
+    const now = new Date().toISOString()
+    const card: Card = { id, userId: user.id, cardName: `${template.name} card`, slug: `${slugify(user.name)}-${id.slice(-4)}`, theme: template.name, design: { ...defaultDesign, ...template.design }, isPublished: false, createdAt: now, updatedAt: now }
+    const starterFields: Array<Pick<CardField, 'fieldType' | 'category' | 'label' | 'value' | 'iconKey'>> = [
+      { fieldType: 'name', category: 'Personal', label: 'Name', value: user.name, iconKey: 'user' },
+      { fieldType: 'job_title', category: 'Personal', label: 'Job title', value: template.role, iconKey: 'briefcase' },
+      { fieldType: 'company', category: 'Personal', label: 'Company name', value: template.company, iconKey: 'building' },
+      { fieldType: 'headline', category: 'Personal', label: 'Headline', value: template.headline, iconKey: 'sparkles' },
+    ]
+    const bundle: CardBundle = { card, fields: starterFields.map((field, sortOrder) => ({ ...field, id: makeId(), cardId: id, metadata: {}, sortOrder, isVisible: true })) }
     setBundles((current) => [...current, bundle])
     writeLocalBundles([...bundles, bundle])
     if (isSupabaseConfigured) {
@@ -197,7 +234,9 @@ export default function App() {
   if (!user) return <AuthScreen onDemo={() => { setUser(defaultUser); setBundles(readLocalBundles()); setSessionReady(true) }} onAuthenticated={(nextUser) => { setUser(nextUser); setSessionReady(true); void loadRemoteBundles(nextUser.id).then(setBundles).catch(() => setBundles([])) }} />
 
   return <div className="app-shell">
-    {route === 'dashboard' && <Dashboard user={user} bundles={bundles} onCreate={createCard} onEdit={(id) => navigate('builder', id)} onDelete={deleteCard} onOpenPublic={(slug) => navigate('public', slug)} onOverview={() => navigate('overview')} onSignOut={signOut} />}
+    {route === 'dashboard' && <Dashboard user={user} bundles={bundles} onCreate={createCard} onCards={() => navigate('dashboard')} onEdit={(id) => navigate('builder', id)} onDelete={deleteCard} onOpenPublic={(slug) => navigate('public', slug)} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignOut={signOut} />}
+    {route === 'templates' && <TemplatesPage user={user} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onInsights={() => navigate('insights')} onCreate={createCard} onUseTemplate={createCardFromTemplate} onSignOut={signOut} />}
+    {route === 'insights' && <InsightsPage user={user} bundles={bundles} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onCreate={createCard} onEdit={(id) => navigate('builder', id)} onSignOut={signOut} />}
     {route === 'builder' && (activeBundle ? <Builder bundle={activeBundle} user={user} saveState={saveState} saveError={saveError} onBack={() => navigate('dashboard')} onUpdate={updateBundle} onToast={showToast} onOpenPublic={(slug) => navigate('public', slug)} /> : <EmptyRoute onCreate={createCard} onBack={() => navigate('dashboard')} />)}
     {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
   </div>
@@ -211,14 +250,27 @@ interface DashboardProps {
   user: AppUser
   bundles: CardBundle[]
   onCreate: () => void
+  onCards: () => void
   onEdit: (id: string) => void
   onDelete: (id: string) => void
   onOpenPublic: (slug: string) => void
   onOverview: () => void
+  onTemplates: () => void
+  onInsights: () => void
   onSignOut: () => void
 }
 
-function Dashboard({ user, bundles, onCreate, onEdit, onDelete, onOpenPublic, onOverview, onSignOut }: DashboardProps) {
+type WorkspaceSection = 'cards' | 'templates' | 'insights'
+
+function WorkspaceSidebar({ active, user, onCards, onOverview, onTemplates, onInsights, onSignOut }: { active: WorkspaceSection; user: AppUser; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignOut: () => void }) {
+  return <aside className="sidebar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={17} /> My cards</button><button className="sidebar-link" onClick={onOverview}><Sparkles size={17} /> Overview</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={17} /> Templates</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={17} /> Insights</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Add a cover image and a personal link to stand out.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div></aside>
+}
+
+function MobileWorkspaceNav({ active, onCards, onOverview, onTemplates, onInsights, onCreate }: { active: WorkspaceSection; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onCreate: () => void }) {
+  return <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={16} /><span>Cards</span></button><button className="mobile-bottom-link" onClick={onOverview}><Sparkles size={16} /><span>Overview</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={16} /><span>Insights</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
+}
+
+function Dashboard({ user, bundles, onCreate, onCards, onEdit, onDelete, onOpenPublic, onOverview, onTemplates, onInsights, onSignOut }: DashboardProps) {
   const [search, setSearch] = useState('')
   const [menuId, setMenuId] = useState('')
   const [confirmId, setConfirmId] = useState('')
@@ -226,22 +278,17 @@ function Dashboard({ user, bundles, onCreate, onEdit, onDelete, onOpenPublic, on
   const publishedCount = bundles.filter((bundle) => bundle.card.isPublished).length
   const dateLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
   return <div className="dashboard-layout">
-    <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">c</span><span>cardly</span></div>
-      <div className="sidebar-label">Workspace</div>
-      <nav className="sidebar-nav" aria-label="Workspace navigation"><button className="sidebar-link sidebar-link-active" aria-current="page"><Grid2X2 size={17} /> My cards</button><button className="sidebar-link" onClick={onOverview}><Sparkles size={17} /> Overview</button><button className="sidebar-link"><LayoutTemplate size={17} /> Templates <span className="nav-soon">Soon</span></button><button className="sidebar-link"><Zap size={17} /> Insights <span className="nav-soon">Soon</span></button></nav>
-      <div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Add a cover image and a personal link to stand out.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div>
-    </aside>
+    <WorkspaceSidebar active="cards" user={user} onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={onInsights} onSignOut={onSignOut} />
     <main className="dashboard-main">
       <div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="mobile-workspace-actions"><button className="mobile-overview-link" onClick={onOverview}><Sparkles size={14} /> Overview</button><button className="mobile-create-button" onClick={onCreate} aria-label="Create new card"><Plus size={16} /></button></div></div>
       <header className="dashboard-header"><div><p className="eyebrow">{dateLabel}</p><h1>Good morning, {user.name.split(' ')[0]}.</h1></div><button className="button button-primary" onClick={onCreate}><Plus size={17} /> Create new card</button></header>
       <div className="dashboard-stats"><StatCard label="Total cards" value={String(bundles.length).padStart(2, '0')} helper="Keep every introduction ready" icon={<FileText size={18} />} /><StatCard label="Published" value={String(publishedCount).padStart(2, '0')} helper="Visible to the people you share with" icon={<Eye size={18} />} /><StatCard label="Your workspace" value="Live" helper={isSupabaseConfigured ? 'Synced with Supabase' : 'Local demo mode'} icon={<Archive size={18} />} accent /></div>
       <div className="section-heading"><div><p className="eyebrow">Your collection</p><h2>My cards <span>{bundles.length}</span></h2></div><div className="search-wrap"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search cards" /></div></div>
-      {bundles.length === 0 ? <EmptyState onCreate={onCreate} /> : <div className="dashboard-content-grid"><div className="card-grid">{filtered.map((bundle) => <CardTile key={bundle.card.id} bundle={bundle} menuOpen={menuId === bundle.card.id} onMenu={() => setMenuId(menuId === bundle.card.id ? '' : bundle.card.id)} onEdit={() => onEdit(bundle.card.id)} onDelete={() => setConfirmId(bundle.card.id)} onOpenPublic={() => onOpenPublic(bundle.card.slug)} />)}</div><WorkspaceSpotlight bundle={bundles[0]} onCreate={onCreate} onEdit={() => onEdit(bundles[0].card.id)} onOpenPublic={() => onOpenPublic(bundles[0].card.slug)} /></div>}
+      {bundles.length === 0 ? <EmptyState onCreate={onCreate} /> : <div className="dashboard-content-grid"><div className="card-grid">{filtered.map((bundle) => <CardTile key={bundle.card.id} bundle={bundle} menuOpen={menuId === bundle.card.id} onMenu={() => setMenuId(menuId === bundle.card.id ? '' : bundle.card.id)} onEdit={() => onEdit(bundle.card.id)} onDelete={() => setConfirmId(bundle.card.id)} onOpenPublic={() => onOpenPublic(bundle.card.slug)} />)}</div><WorkspaceSpotlight bundle={bundles[0]} onEdit={() => onEdit(bundles[0].card.id)} onOpenPublic={() => onOpenPublic(bundles[0].card.slug)} /></div>}
       {filtered.length === 0 && bundles.length > 0 && <div className="no-results">No cards match “{search}”.</div>}
       {confirmId && <ConfirmDialog title="Delete this card?" description="This removes the card and its fields. This action cannot be undone." confirmLabel="Delete card" onCancel={() => setConfirmId('')} onConfirm={() => { onDelete(confirmId); setConfirmId('') }} />}
     </main>
-    <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className="mobile-bottom-link mobile-bottom-link-active" aria-current="page"><Grid2X2 size={17} /><span>Cards</span></button><button className="mobile-bottom-link" onClick={onOverview}><Sparkles size={17} /><span>Overview</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New card</small></button></nav>
+    <MobileWorkspaceNav active="cards" onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={onInsights} onCreate={onCreate} />
   </div>
 }
 
@@ -249,13 +296,44 @@ function StatCard({ label, value, helper, icon, accent = false }: { label: strin
   return <div className={`stat-card ${accent ? 'stat-card-accent' : ''}`}><div className="stat-top"><span>{label}</span><span className="stat-icon">{icon}</span></div><strong>{value}</strong><p>{helper}</p></div>
 }
 
-function WorkspaceSpotlight({ bundle, onCreate, onEdit, onOpenPublic }: { bundle: CardBundle; onCreate: () => void; onEdit: () => void; onOpenPublic: () => void }) {
+const getCardReadiness = (bundle: CardBundle) => {
+  const hasName = bundle.fields.some((field) => field.fieldType === 'name' && field.value.trim())
+  const hasRole = bundle.fields.some((field) => ['job_title', 'company'].includes(field.fieldType) && field.value.trim())
+  const hasConnection = bundle.fields.some((field) => ['phone', 'email', 'whatsapp'].includes(field.fieldType) && field.value.trim())
+  return Math.round(([hasName && hasRole, hasConnection, bundle.card.isPublished].filter(Boolean).length / 3) * 100)
+}
+
+function WorkspaceSpotlight({ bundle, onEdit, onOpenPublic }: { bundle: CardBundle; onEdit: () => void; onOpenPublic: () => void }) {
   const hasName = bundle.fields.some((field) => field.fieldType === 'name' && field.value.trim())
   const hasRole = bundle.fields.some((field) => ['job_title', 'company'].includes(field.fieldType) && field.value.trim())
   const hasConnection = bundle.fields.some((field) => ['phone', 'email', 'whatsapp'].includes(field.fieldType) && field.value.trim())
   const checklist = [{ label: 'Name and role', done: hasName && hasRole }, { label: 'A way to connect', done: hasConnection }, { label: 'Published link', done: bundle.card.isPublished }]
-  const completion = Math.round((checklist.filter((item) => item.done).length / checklist.length) * 100)
+  const completion = getCardReadiness(bundle)
   return <aside className="workspace-spotlight"><div className="spotlight-header"><div><p className="eyebrow">Card health</p><h3>{completion === 100 ? 'Ready to be remembered' : 'A few details to go'}</h3></div><span className="spotlight-status"><span className="spotlight-status-dot" />{completion === 100 ? 'All set' : 'On track'}</span></div><div className="spotlight-score"><div><strong>{completion}%</strong><span>share-ready</span></div><div className="spotlight-progress"><span style={{ width: `${completion}%` }} /></div></div><div className="spotlight-checklist">{checklist.map((item) => <div className={item.done ? 'spotlight-check spotlight-check-done' : 'spotlight-check'} key={item.label}><span>{item.done ? <Check size={12} /> : <span />}</span><p>{item.label}</p><small>{item.done ? 'Complete' : 'Next step'}</small></div>)}</div><div className="spotlight-actions"><button className="button button-primary" onClick={bundle.card.isPublished ? onOpenPublic : onEdit}>{bundle.card.isPublished ? 'View live card' : 'Finish card'} <ArrowUpRight size={14} /></button><button className="spotlight-secondary" onClick={onEdit}><Palette size={14} /> Customize</button></div></aside>
+}
+
+function TemplatesPage({ user, onCards, onOverview, onInsights, onCreate, onUseTemplate, onSignOut }: { user: AppUser; onCards: () => void; onOverview: () => void; onInsights: () => void; onCreate: () => void; onUseTemplate: (template: CardTemplate) => void; onSignOut: () => void }) {
+  const [category, setCategory] = useState('All')
+  const [search, setSearch] = useState('')
+  const categories = ['All', ...cardTemplates.map((template) => template.name)]
+  const filtered = cardTemplates.filter((template) => (category === 'All' || template.name === category) && `${template.name} ${template.category} ${template.description} ${template.useCase}`.toLowerCase().includes(search.toLowerCase()))
+  return <div className="dashboard-layout"><WorkspaceSidebar active="templates" user={user} onCards={onCards} onOverview={onOverview} onTemplates={() => undefined} onInsights={onInsights} onSignOut={onSignOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-overview-link" onClick={onCards}><ArrowLeft size={14} /> Cards</button></div><header className="workspace-page-header"><div className="workspace-page-heading"><p className="eyebrow">Template library</p><h1>Start with a point of view.</h1><p>Choose a thoughtful starting point, then make it yours in the builder.</p></div><button className="button button-ghost" onClick={onCreate}><Plus size={16} /> Start blank</button></header><div className="workspace-toolbar"><div className="workspace-filter-chips" role="tablist" aria-label="Template categories">{categories.map((item) => <button className={category === item ? 'workspace-filter-chip workspace-filter-chip-active' : 'workspace-filter-chip'} key={item} onClick={() => setCategory(item)} role="tab" aria-selected={category === item}>{item}</button>)}</div><div className="search-wrap workspace-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search templates" aria-label="Search templates" /></div></div>{filtered.length ? <div className="template-grid">{filtered.map((template) => <TemplateCard key={template.id} template={template} onUse={() => onUseTemplate(template)} />)}</div> : <div className="workspace-empty"><div className="workspace-empty-icon"><Search size={20} /></div><h2>No templates found</h2><p>Try a different category or search term.</p><button className="button button-ghost" onClick={() => { setCategory('All'); setSearch('') }}>Clear filters</button></div>}</main><MobileWorkspaceNav active="templates" onCards={onCards} onOverview={onOverview} onTemplates={() => undefined} onInsights={onInsights} onCreate={onCreate} /></div>
+}
+
+function TemplateCard({ template, onUse }: { template: CardTemplate; onUse: () => void }) {
+  const name = 'Your name'
+  return <article className={`template-card ${template.featured ? 'template-card-featured' : ''}`}><div className="template-card-preview" style={{ backgroundColor: template.design.headerColor || '#cde7e0' }}><div className="template-card-preview-top"><span>{template.featured ? 'Recommended' : template.category}</span><span className="template-card-dots">•••</span></div><div className="template-mini-card" style={{ background: template.design.cardBackground || '#fff', color: template.design.textColor || '#14221f' }}><div className="template-mini-avatar" style={{ background: template.design.accentColor || '#165c51' }}>{initials(name)}</div><div><strong>{name}</strong><span style={{ color: template.design.accentColor || '#165c51' }}>{template.role}</span><i style={{ background: template.design.accentColor || '#165c51' }} /></div></div></div><div className="template-card-content"><div><p className="eyebrow">{template.name}</p><h2>{template.description}</h2><p>{template.useCase}</p></div><button className="template-use-button" onClick={onUse}>Use template <ArrowRight size={15} /></button></div></article>
+}
+
+function InsightsPage({ user, bundles, onCards, onOverview, onTemplates, onCreate, onEdit, onSignOut }: { user: AppUser; bundles: CardBundle[]; onCards: () => void; onOverview: () => void; onTemplates: () => void; onCreate: () => void; onEdit: (id: string) => void; onSignOut: () => void }) {
+  const totalFields = bundles.reduce((total, bundle) => total + bundle.fields.filter((field) => field.value.trim()).length, 0)
+  const averageReadiness = bundles.length ? Math.round(bundles.reduce((total, bundle) => total + getCardReadiness(bundle), 0) / bundles.length) : 0
+  const connectedCards = bundles.filter((bundle) => bundle.fields.some((field) => ['phone', 'email', 'whatsapp'].includes(field.fieldType) && field.value.trim())).length
+  return <div className="dashboard-layout"><WorkspaceSidebar active="insights" user={user} onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={() => undefined} onSignOut={onSignOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-overview-link" onClick={onCards}><ArrowLeft size={14} /> Cards</button></div><header className="workspace-page-header"><div className="workspace-page-heading"><p className="eyebrow">Profile insights</p><h1>Make every share count.</h1><p>A clear read on the details that make your digital introduction feel complete.</p></div><button className="button button-primary" onClick={onCreate}><Plus size={16} /> Add a card</button></header><div className="insight-metric-grid"><InsightMetric label="Share readiness" value={`${averageReadiness}%`} helper="Average across your cards" icon={<TrendingUp size={18} />} accent /><InsightMetric label="Published cards" value={String(bundles.filter((bundle) => bundle.card.isPublished).length).padStart(2, '0')} helper="Ready for real introductions" icon={<Eye size={18} />} /><InsightMetric label="Details added" value={String(totalFields).padStart(2, '0')} helper="Fields powering your cards" icon={<BarChart3 size={18} />} /><InsightMetric label="Connection coverage" value={`${bundles.length ? Math.round((connectedCards / bundles.length) * 100) : 0}%`} helper="Cards with a way to reach you" icon={<Share2 size={18} />} /></div><div className="insights-layout"><section className="insight-panel insight-readiness-panel"><div className="insight-panel-heading"><div><p className="eyebrow">Readiness by card</p><h2>Build confidence before you share.</h2></div><span className="insight-panel-badge"><TrendingUp size={13} /> Live snapshot</span></div>{bundles.length ? <div className="insight-card-list">{bundles.map((bundle) => { const name = bundle.fields.find((field) => field.fieldType === 'name')?.value || bundle.card.cardName; const readiness = getCardReadiness(bundle); return <button className="insight-card-row" key={bundle.card.id} onClick={() => onEdit(bundle.card.id)}><span className="insight-card-identity"><span className="insight-card-avatar" style={{ background: bundle.card.design.accentColor }}>{initials(name)}</span><span><strong>{bundle.card.cardName}</strong><small>{bundle.fields.filter((field) => field.value.trim()).length} details · {bundle.card.isPublished ? 'Published' : 'Draft'}</small></span></span><span className="insight-card-bar"><span style={{ width: `${readiness}%` }} /></span><strong className="insight-card-percent">{readiness}%</strong><ArrowRight size={14} className="insight-card-arrow" /></button> })}</div> : <div className="workspace-empty workspace-empty-inline"><div className="workspace-empty-icon"><BarChart3 size={20} /></div><h2>Your first insight is one card away.</h2><p>Create a card to see its share-readiness here.</p><button className="button button-primary" onClick={onCreate}><Plus size={15} /> Create card</button></div>}</section><aside className="insight-panel insight-recommendation"><div className="insight-recommendation-icon"><Lightbulb size={18} /></div><p className="eyebrow">Next best move</p><h2>{bundles.length && averageReadiness === 100 ? 'Your cards are ready for more conversations.' : 'Add one clear way for people to reach you.'}</h2><p>{bundles.length && averageReadiness === 100 ? 'Keep your strongest card visible, then make sharing part of your next introduction.' : 'A phone number, email, or WhatsApp link turns a good introduction into an easy next step.'}</p><button className="button button-ghost" onClick={bundles[0] ? () => onEdit(bundles[0].card.id) : onCreate}>{bundles[0] ? 'Improve my card' : 'Create my first card'} <ArrowUpRight size={14} /></button></aside></div></main><MobileWorkspaceNav active="insights" onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={() => undefined} onCreate={onCreate} /></div>
+}
+
+function InsightMetric({ label, value, helper, icon, accent = false }: { label: string; value: string; helper: string; icon: ReactNode; accent?: boolean }) {
+  return <div className={`insight-metric ${accent ? 'insight-metric-accent' : ''}`}><div className="insight-metric-top"><span>{label}</span><span>{icon}</span></div><strong>{value}</strong><p>{helper}</p></div>
 }
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
