@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { definitionFor } from '../lib/fieldDefinitions'
 import type { CardField, FieldDefinition } from '../lib/types'
 import { IconBadge } from './IconBadge'
@@ -71,6 +71,57 @@ export function FieldEditor({ definition, field, onClose, onSave }: FieldEditorP
       </div>
     </div>
   )
+}
+
+interface InlineFieldEditorProps {
+  definition: FieldDefinition
+  field?: CardField
+  onCancel: () => void
+  onSave: (data: Omit<CardField, 'id' | 'cardId' | 'sortOrder' | 'isVisible'>) => void
+}
+
+export function InlineFieldEditor({ definition, field, onCancel, onSave }: InlineFieldEditorProps) {
+  const [label, setLabel] = useState(field?.label ?? defaultLabel(definition.type))
+  const [value, setValue] = useState(field?.value ?? '')
+  const [metadata, setMetadata] = useState<Record<string, string>>(field?.metadata ?? {})
+  const [error, setError] = useState('')
+
+  const isAddress = definition.type === 'address'
+  const isPhone = definition.type === 'phone'
+  const isCustomButton = definition.type === 'custom_button'
+  const needsValue = !isAddress
+  const updateMeta = (key: string, next: string) => setMetadata((current) => ({ ...current, [key]: next }))
+
+  const save = () => {
+    const rawValue = isAddress ? [metadata.street, metadata.city, metadata.state, metadata.postalCode, metadata.country].filter(Boolean).join(', ') : value.trim()
+    if (needsValue && !rawValue) {
+      setError('Add a value before saving this field.')
+      return
+    }
+    const cleanValue = urlTypes.has(definition.type) && rawValue && !rawValue.startsWith('http') && !rawValue.includes('@') ? `https://${rawValue}` : rawValue
+    onSave({ fieldType: definition.type, category: definition.category, label: label.trim() || definition.label, value: cleanValue, metadata, iconKey: definition.iconKey })
+  }
+
+  return <div className="field-inline-editor" role="group" aria-label={`${field ? 'Edit' : 'Add'} ${definition.label}`}>
+    <div className="field-inline-heading"><IconBadge iconKey={definition.iconKey} size="sm" /><div><strong>{field ? `Edit ${definition.label}` : `Add ${definition.label}`}</strong><span>Complete this field without leaving the list.</span></div></div>
+    <div className={`field-inline-fields ${isAddress ? 'field-inline-fields-address' : ''}`}>
+      <label className="field-label">Label<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder={definition.label} /></label>
+      {isAddress ? <div className="field-inline-address-grid">
+        <label className="field-label field-inline-span-two">Street<input value={metadata.street ?? ''} onChange={(event) => updateMeta('street', event.target.value)} placeholder="123 Market Street" /></label>
+        <label className="field-label">City<input value={metadata.city ?? ''} onChange={(event) => updateMeta('city', event.target.value)} placeholder="San Francisco" /></label>
+        <label className="field-label">State / region<input value={metadata.state ?? ''} onChange={(event) => updateMeta('state', event.target.value)} placeholder="CA" /></label>
+        <label className="field-label">ZIP / postal code<input value={metadata.postalCode ?? ''} onChange={(event) => updateMeta('postalCode', event.target.value)} placeholder="94105" /></label>
+        <label className="field-label">Country<input value={metadata.country ?? ''} onChange={(event) => updateMeta('country', event.target.value)} placeholder="United States" /></label>
+      </div> : <div className="field-inline-value-wrap">
+        {isPhone && <label className="field-label">Country code<input value={metadata.countryCode ?? ''} onChange={(event) => updateMeta('countryCode', event.target.value)} placeholder="+1" /></label>}
+        <label className="field-label">{isCustomButton ? 'Button label' : definition.type === 'custom_text' ? 'Text' : definition.type === 'email' ? 'Email address' : urlTypes.has(definition.type) ? 'URL or handle' : 'Value'}<input value={value} onChange={(event) => setValue(event.target.value)} placeholder={placeholderFor(definition.type)} inputMode={isPhone ? 'tel' : undefined} /></label>
+        {isCustomButton && <label className="field-label">Button destination<input value={metadata.url ?? ''} onChange={(event) => updateMeta('url', event.target.value)} placeholder="https://example.com/book" /></label>}
+        {definition.type === 'custom_link' && <label className="field-label">Optional icon key<span className="field-hint">Try: link, globe, calendar, star</span><input value={metadata.iconKey ?? ''} onChange={(event) => updateMeta('iconKey', event.target.value)} placeholder="link" /></label>}
+      </div>}
+    </div>
+    {error && <p className="form-error field-inline-error">{error}</p>}
+    <div className="field-inline-actions"><button className="button button-ghost" onClick={onCancel}>Cancel</button><button className="button button-primary" onClick={save}><Check size={14} /> {field ? 'Save changes' : 'Add to card'}</button></div>
+  </div>
 }
 
 function defaultLabel(type: string) {
