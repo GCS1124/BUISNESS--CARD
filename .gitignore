@@ -6,3 +6,5 @@ dist/
 .DS_Store
 
 .vercel
+.playwright-mcp/
+templates-final.png
