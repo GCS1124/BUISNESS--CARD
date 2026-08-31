@@ -50,6 +50,8 @@ body { background: #f7f8f3; }
 .card-tile { border-color: rgba(218, 229, 218, .9); border-radius: 19px; box-shadow: 0 8px 20px rgba(32, 48, 38, .035); }
 .card-tile:hover { transform: translateY(-5px); box-shadow: 0 22px 43px rgba(29, 59, 39, .12); }
 .card-tile-preview { height: 214px; border-radius: 19px 19px 0 0; background: linear-gradient(145deg, #f3f8f0, #eaf2e9); }
+.card-tile-preview::before { content: 'Open editor  →'; position: absolute; z-index: 3; top: 14px; left: 14px; padding: 7px 9px; color: #2d6654; border: 1px solid rgba(206, 226, 210, .9); border-radius: 8px; background: rgba(255, 255, 255, .82); box-shadow: 0 6px 14px rgba(29, 72, 45, .08); backdrop-filter: blur(8px); opacity: 0; font-size: 8px; font-weight: 800; transform: translateY(4px); transition: opacity .2s ease, transform .2s ease; }
+.card-tile-preview:hover::before, .card-tile-preview:focus-visible::before { opacity: 1; transform: translateY(0); }
 .card-tile-preview::after { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,.2), transparent 38%, rgba(255,255,255,.24)); pointer-events: none; }
 .tile-cover { height: 101px; }
 .tile-card { left: 15px; right: 15px; bottom: -1px; min-height: 135px; padding: 23px 18px; border-radius: 19px 19px 0 0; box-shadow: 0 -10px 23px rgba(20, 40, 33, .08); }
@@ -85,11 +87,13 @@ body { background: #f7f8f3; }
 .panel-heading div > p:last-child { color: #7f9186; }
 .field-search { flex-basis: 163px; height: 41px; border-radius: 11px; background: #f8fbf7; }
 .active-fields-section { margin-top: 37px; padding: 19px 18px 18px; border: 1px solid #e2ebe1; border-radius: 16px; background: linear-gradient(180deg, #fbfefb, #f7fbf7); box-shadow: 0 8px 21px rgba(46, 81, 52, .035); }
+.active-fields-section::after { content: 'Tip  ·  Start with your name, role, and one easy way to connect.'; display: block; margin-top: 15px; padding: 9px 10px; color: #668677; border: 1px solid #dcebdd; border-radius: 9px; background: #eff8ef; font-size: 9px; line-height: 1.4; }
 .active-fields-section .active-fields-list { margin-top: 14px; }
 .active-fields-list { min-width: 0; }
 .active-field { min-width: 0; min-height: 53px; border-color: #e0e9e0; border-radius: 11px; background: rgba(255, 255, 255, .82); }
 .active-field:hover { border-color: #b9d5bf; box-shadow: 0 8px 17px rgba(34, 69, 49, .07); }
 .field-library { margin-top: 25px; }
+.field-library::before { content: 'Add more details'; display: block; margin-bottom: 10px; color: #9aa99f; text-transform: uppercase; letter-spacing: .13em; font-size: 9px; font-weight: 800; }
 .field-category { border-color: #e1e9e0; border-radius: 13px; box-shadow: 0 5px 14px rgba(36, 65, 42, .025); }
 .category-heading { padding: 15px 16px; }
 .field-option { min-height: 50px; border-radius: 10px; }
@@ -105,7 +109,17 @@ body { background: #f7f8f3; }
 .phone-detail { transition: transform .18s ease, background .18s ease; }
 .phone-detail:hover { transform: translateX(2px); background: rgba(240, 249, 240, .76); }
 
+.landing-hero-art .phone-shell { animation: cardly-phone-float 8s ease-in-out infinite; }
+.hero-float-top { animation: cardly-float-top 7s ease-in-out 1s infinite; }
+.hero-float-bottom { animation: cardly-float-bottom 7s ease-in-out infinite; }
+.feature-card, .process-step { transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+.feature-card:hover, .process-step:hover { transform: translateY(-5px); border-color: #c9dfcc; box-shadow: 0 17px 32px rgba(43, 81, 51, .08); }
+@keyframes cardly-phone-float { 0%, 100% { transform: rotate(4deg) translateY(6px); } 50% { transform: rotate(3deg) translateY(-4px); } }
+@keyframes cardly-float-top { 0%, 100% { transform: rotate(4deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-7px); } }
+@keyframes cardly-float-bottom { 0%, 100% { transform: rotate(-4deg) translateY(0); } 50% { transform: rotate(-4deg) translateY(7px); } }
+
 .mobile-workspace-bar { display: none; }
+.mobile-bottom-nav { display: none; }
 
 @media (max-width: 1080px) {
   .dashboard-layout { grid-template-columns: 216px minmax(0, 1fr); }
@@ -124,9 +138,16 @@ body { background: #f7f8f3; }
   .mobile-overview-link { display: inline-flex; align-items: center; gap: 6px; min-height: 35px; padding: 0 10px; color: #397561; border: 1px solid #d2e6d4; border-radius: 9px; background: rgba(255,255,255,.72); font-size: 10px; font-weight: 800; }
   .mobile-create-button { display: grid; place-items: center; width: 35px; height: 35px; color: #fff; border-radius: 10px; background: var(--accent); box-shadow: 0 7px 15px rgba(18, 100, 84, .18); }
   .dashboard-main { padding-top: 22px; }
+  .dashboard-main { padding-bottom: 112px; }
   .dashboard-header { padding: 22px; }
   .preview-column { top: 0; }
   .editor-column { box-shadow: none; }
+  .mobile-bottom-nav { position: fixed; z-index: 30; right: 14px; bottom: 14px; left: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; gap: 6px; padding: 8px; border: 1px solid rgba(213, 228, 214, .96); border-radius: 17px; background: rgba(255, 255, 252, .88); box-shadow: 0 16px 35px rgba(29, 63, 38, .14); backdrop-filter: blur(18px); }
+  .mobile-bottom-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; color: #8a9c91; border-radius: 11px; background: transparent; font-size: 9px; font-weight: 800; }
+  .mobile-bottom-link-active { color: var(--accent); background: #eaf5eb; }
+  .mobile-bottom-create { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; color: #fff; border-radius: 11px; background: linear-gradient(145deg, #176b5a, #0d5145); font-size: 9px; font-weight: 800; box-shadow: 0 7px 14px rgba(18, 100, 84, .17); }
+  .mobile-bottom-create span { display: grid; place-items: center; }
+  .mobile-bottom-create small { font-size: 9px; }
 }
 
 @media (max-width: 600px) {
@@ -143,6 +164,8 @@ body { background: #f7f8f3; }
   .preview-stage { min-height: 590px; }
   .preview-stage::before { width: 350px; height: 350px; }
   .active-fields-section { padding: 16px 13px 14px; border-radius: 14px; }
+  .mobile-bottom-nav { right: 10px; bottom: 10px; left: 10px; }
+  .mobile-bottom-link, .mobile-bottom-create { min-height: 38px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

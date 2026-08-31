@@ -224,22 +224,24 @@ function Dashboard({ user, bundles, onCreate, onEdit, onDelete, onOpenPublic, on
   const [confirmId, setConfirmId] = useState('')
   const filtered = bundles.filter((bundle) => `${bundle.card.cardName} ${bundle.card.slug}`.toLowerCase().includes(search.toLowerCase()))
   const publishedCount = bundles.filter((bundle) => bundle.card.isPublished).length
+  const dateLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
   return <div className="dashboard-layout">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">c</span><span>cardly</span></div>
       <div className="sidebar-label">Workspace</div>
-      <nav className="sidebar-nav"><button className="sidebar-link sidebar-link-active"><Grid2X2 size={17} /> My cards</button><button className="sidebar-link" onClick={onOverview}><Sparkles size={17} /> Overview</button><button className="sidebar-link"><LayoutTemplate size={17} /> Templates <span className="nav-soon">Soon</span></button><button className="sidebar-link"><Zap size={17} /> Insights <span className="nav-soon">Soon</span></button></nav>
+      <nav className="sidebar-nav" aria-label="Workspace navigation"><button className="sidebar-link sidebar-link-active" aria-current="page"><Grid2X2 size={17} /> My cards</button><button className="sidebar-link" onClick={onOverview}><Sparkles size={17} /> Overview</button><button className="sidebar-link"><LayoutTemplate size={17} /> Templates <span className="nav-soon">Soon</span></button><button className="sidebar-link"><Zap size={17} /> Insights <span className="nav-soon">Soon</span></button></nav>
       <div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Add a cover image and a personal link to stand out.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div>
     </aside>
     <main className="dashboard-main">
       <div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="mobile-workspace-actions"><button className="mobile-overview-link" onClick={onOverview}><Sparkles size={14} /> Overview</button><button className="mobile-create-button" onClick={onCreate} aria-label="Create new card"><Plus size={16} /></button></div></div>
-      <header className="dashboard-header"><div><p className="eyebrow">Wednesday, August 27</p><h1>Good morning, {user.name.split(' ')[0]}.</h1></div><button className="button button-primary" onClick={onCreate}><Plus size={17} /> Create new card</button></header>
+      <header className="dashboard-header"><div><p className="eyebrow">{dateLabel}</p><h1>Good morning, {user.name.split(' ')[0]}.</h1></div><button className="button button-primary" onClick={onCreate}><Plus size={17} /> Create new card</button></header>
       <div className="dashboard-stats"><StatCard label="Total cards" value={String(bundles.length).padStart(2, '0')} helper="Keep every introduction ready" icon={<FileText size={18} />} /><StatCard label="Published" value={String(publishedCount).padStart(2, '0')} helper="Visible to the people you share with" icon={<Eye size={18} />} /><StatCard label="Your workspace" value="Live" helper={isSupabaseConfigured ? 'Synced with Supabase' : 'Local demo mode'} icon={<Archive size={18} />} accent /></div>
       <div className="section-heading"><div><p className="eyebrow">Your collection</p><h2>My cards <span>{bundles.length}</span></h2></div><div className="search-wrap"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search cards" /></div></div>
       {bundles.length === 0 ? <EmptyState onCreate={onCreate} /> : <div className="card-grid">{filtered.map((bundle) => <CardTile key={bundle.card.id} bundle={bundle} menuOpen={menuId === bundle.card.id} onMenu={() => setMenuId(menuId === bundle.card.id ? '' : bundle.card.id)} onEdit={() => onEdit(bundle.card.id)} onDelete={() => setConfirmId(bundle.card.id)} onOpenPublic={() => onOpenPublic(bundle.card.slug)} />)}</div>}
       {filtered.length === 0 && bundles.length > 0 && <div className="no-results">No cards match “{search}”.</div>}
       {confirmId && <ConfirmDialog title="Delete this card?" description="This removes the card and its fields. This action cannot be undone." confirmLabel="Delete card" onCancel={() => setConfirmId('')} onConfirm={() => { onDelete(confirmId); setConfirmId('') }} />}
     </main>
+    <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className="mobile-bottom-link mobile-bottom-link-active" aria-current="page"><Grid2X2 size={17} /><span>Cards</span></button><button className="mobile-bottom-link" onClick={onOverview}><Sparkles size={17} /><span>Overview</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New card</small></button></nav>
   </div>
 }
 
