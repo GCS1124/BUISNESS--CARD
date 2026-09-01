@@ -137,10 +137,13 @@ const starterCopy: Record<string, { role: string; company: string; headline: str
   Playful: { role: 'Creative director', company: 'Studio practice', headline: 'Making useful things feel alive.', useCase: 'For artists, marketers, and culture builders.' },
 }
 
-export const cardTemplates: CardTemplate[] = templateSeeds.map((seed, index) => {
+const curatedTemplateIndices = [0, 1, 2, 3, 4, 5, 7, 8]
+
+export const cardTemplates: CardTemplate[] = curatedTemplateIndices.map((sourceIndex) => {
+  const seed = templateSeeds[sourceIndex]
   const [headerColor, cardBackground, accentColor, textColor] = seed.colors
   const copy = starterCopy[seed.category]
-  const imageNumber = String(index + 1).padStart(3, '0')
+  const imageNumber = String(sourceIndex + 1).padStart(3, '0')
   return {
     id: `template-${imageNumber}`,
     name: seed.name,
@@ -153,9 +156,9 @@ export const cardTemplates: CardTemplate[] = templateSeeds.map((seed, index) => 
       accentColor,
       textColor,
       mode: textColor.startsWith('#f') || textColor.startsWith('#e') ? 'dark' : 'light',
-      fontFamily: ['Manrope', 'DM Sans', 'Space Grotesk'][index % 3],
-      buttonStyle: (['solid', 'soft', 'outline'] as const)[index % 3],
-      borderRadius: 14 + ((index * 3) % 22),
+      fontFamily: ['Manrope', 'DM Sans', 'Space Grotesk'][sourceIndex % 3],
+      buttonStyle: (['solid', 'soft', 'outline'] as const)[sourceIndex % 3],
+      borderRadius: 14 + ((sourceIndex * 3) % 22),
       coverImageUrl: `/template-assets/template-${imageNumber}.jpg`,
     },
     role: copy.role,
@@ -163,7 +166,6 @@ export const cardTemplates: CardTemplate[] = templateSeeds.map((seed, index) => 
     headline: copy.headline,
     imageUrl: `/template-assets/template-${imageNumber}.jpg`,
     imageAlt: `${seed.name} abstract business card artwork`,
-    featured: index < 3,
+    featured: sourceIndex < 3,
   }
 })
-
