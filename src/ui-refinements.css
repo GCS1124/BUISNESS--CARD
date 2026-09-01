@@ -49,6 +49,7 @@ body { background: #f7f8f3; }
 .card-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 23px; }
 .card-tile { border-color: rgba(218, 229, 218, .9); border-radius: 19px; box-shadow: 0 8px 20px rgba(32, 48, 38, .035); }
 .card-tile:hover { transform: translateY(-5px); box-shadow: 0 22px 43px rgba(29, 59, 39, .12); }
+.card-tile-menu-open { position: relative; z-index: 20; }
 .card-tile-preview { height: 214px; border-radius: 19px 19px 0 0; background: linear-gradient(145deg, #f3f8f0, #eaf2e9); }
 .card-tile-preview::before { content: 'Open editor  →'; position: absolute; z-index: 3; top: 14px; left: 14px; padding: 7px 9px; color: #2d6654; border: 1px solid rgba(206, 226, 210, .9); border-radius: 8px; background: rgba(255, 255, 255, .82); box-shadow: 0 6px 14px rgba(29, 72, 45, .08); backdrop-filter: blur(8px); opacity: 0; font-size: 8px; font-weight: 800; transform: translateY(4px); transition: opacity .2s ease, transform .2s ease; }
 .card-tile-preview:hover::before, .card-tile-preview:focus-visible::before { opacity: 1; transform: translateY(0); }
@@ -266,6 +267,9 @@ body { background: #f7f8f3; }
   .field-inline-value-wrap { grid-column: 1; }
   .field-inline-value-wrap-phone { grid-template-columns: minmax(82px, .52fr) minmax(0, 1fr); }
 }
+
+/* Give bold headlines more breathing room consistently across the project. */
+:where(h1, h2, h3, h4, h5, h6) { letter-spacing: -0.02em !important; }
 
 /* Templates + insights workspace sections */
 .workspace-page-main { min-height: 100vh; }

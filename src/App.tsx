@@ -66,13 +66,14 @@ const themePresets: Array<{ name: string; description: string; design: Partial<D
 
 const routeFromLocation = (): { route: AppRoute; id?: string } => {
   const path = window.location.pathname
+  if (path === '/cards' || path.startsWith('/dashboard')) return { route: 'dashboard' }
   if (path.startsWith('/builder/')) return { route: 'builder', id: decodeURIComponent(path.split('/')[2] ?? '') }
   if (path.startsWith('/card/')) return { route: 'public', id: decodeURIComponent(path.split('/')[2] ?? '') }
   if (path.startsWith('/reset-password')) return { route: 'reset' }
   if (path.startsWith('/overview')) return { route: 'overview' }
   if (path.startsWith('/templates')) return { route: 'templates' }
   if (path.startsWith('/insights')) return { route: 'insights' }
-  return { route: 'dashboard' }
+  return { route: 'overview' }
 }
 
 export default function App() {
@@ -142,7 +143,7 @@ export default function App() {
   }, [])
 
   const navigate = (nextRoute: AppRoute, id?: string) => {
-    const path = nextRoute === 'dashboard' ? '/' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : `/${nextRoute}`
+    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : `/${nextRoute}`
     window.history.pushState({}, '', path)
     setRoute(nextRoute)
     setRouteId(id)
@@ -359,7 +360,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 function CardTile({ bundle, menuOpen, onMenu, onEdit, onDelete, onOpenPublic }: { bundle: CardBundle; menuOpen: boolean; onMenu: () => void; onEdit: () => void; onDelete: () => void; onOpenPublic: () => void }) {
   const { card, fields } = bundle
   const name = fields.find((field) => field.fieldType === 'name')?.value || 'Untitled card'
-  return <article className="card-tile"><button className="card-tile-preview" onClick={onEdit}><div className="tile-cover" style={{ backgroundColor: card.design.headerColor, backgroundImage: card.design.coverImageUrl ? `url(${card.design.coverImageUrl})` : undefined }} /><div className="tile-card" style={{ background: card.design.cardBackground }}><div className="tile-avatar" style={{ background: card.design.accentColor }}>{card.design.profileImageUrl ? <img src={card.design.profileImageUrl} alt="" /> : initials(name)}</div><div className="tile-copy"><strong style={{ color: card.design.textColor }}>{name}</strong><span style={{ color: card.design.accentColor }}>{fields.find((field) => field.fieldType === 'job_title')?.value || 'Add a job title'}</span><i style={{ background: card.design.accentColor }} /></div></div><span className={`tile-status ${card.isPublished ? 'tile-status-live' : ''}`}>{card.isPublished ? 'Published' : 'Draft'}</span></button><div className="card-tile-footer"><div><h3>{card.cardName}</h3><button className="public-slug" onClick={onOpenPublic}>cardly.me/{card.slug} <ExternalLink size={12} /></button></div><div className="tile-actions"><button className="icon-button" onClick={onEdit} aria-label="Edit card"><Edit3 size={15} /></button><div className="menu-wrap"><button className="icon-button" onClick={onMenu} aria-label="More actions"><MoreHorizontal size={16} /></button>{menuOpen && <div className="action-menu"><button onClick={onOpenPublic}><Eye size={14} /> View public card</button><button onClick={onEdit}><Edit3 size={14} /> Edit card</button><button className="danger-text" onClick={onDelete}><Trash2 size={14} /> Delete card</button></div>}</div></div></div></article>
+  return <article className={`card-tile ${menuOpen ? 'card-tile-menu-open' : ''}`}><button className="card-tile-preview" onClick={onEdit}><div className="tile-cover" style={{ backgroundColor: card.design.headerColor, backgroundImage: card.design.coverImageUrl ? `url(${card.design.coverImageUrl})` : undefined }} /><div className="tile-card" style={{ background: card.design.cardBackground }}><div className="tile-avatar" style={{ background: card.design.accentColor }}>{card.design.profileImageUrl ? <img src={card.design.profileImageUrl} alt="" /> : initials(name)}</div><div className="tile-copy"><strong style={{ color: card.design.textColor }}>{name}</strong><span style={{ color: card.design.accentColor }}>{fields.find((field) => field.fieldType === 'job_title')?.value || 'Add a job title'}</span><i style={{ background: card.design.accentColor }} /></div></div><span className={`tile-status ${card.isPublished ? 'tile-status-live' : ''}`}>{card.isPublished ? 'Published' : 'Draft'}</span></button><div className="card-tile-footer"><div><h3>{card.cardName}</h3><button className="public-slug" onClick={onOpenPublic}>cardly.me/{card.slug} <ExternalLink size={12} /></button></div><div className="tile-actions"><button className="icon-button" onClick={onEdit} aria-label="Edit card"><Edit3 size={15} /></button><div className="menu-wrap"><button className="icon-button" onClick={onMenu} aria-label="More actions"><MoreHorizontal size={16} /></button>{menuOpen && <div className="action-menu"><button onClick={onOpenPublic}><Eye size={14} /> View public card</button><button onClick={onEdit}><Edit3 size={14} /> Edit card</button><button className="danger-text" onClick={onDelete}><Trash2 size={14} /> Delete card</button></div>}</div></div></div></article>
 }
 
 interface BuilderProps {
