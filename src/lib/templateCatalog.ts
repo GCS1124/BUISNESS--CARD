@@ -137,7 +137,7 @@ const starterCopy: Record<string, { role: string; company: string; headline: str
   Playful: { role: 'Creative director', company: 'Studio practice', headline: 'Making useful things feel alive.', useCase: 'For artists, marketers, and culture builders.' },
 }
 
-const curatedTemplateIndices = [0, 1, 2, 3, 4, 5, 7, 8]
+const curatedTemplateIndices = Array.from({ length: 25 }, (_, index) => index)
 
 export const cardTemplates: CardTemplate[] = curatedTemplateIndices.map((sourceIndex) => {
   const seed = templateSeeds[sourceIndex]
