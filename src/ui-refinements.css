@@ -373,7 +373,7 @@ body { background: #f7f8f3; }
   .template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-content-grid { grid-template-columns: 1fr; }
   .insight-card-row { grid-template-columns: minmax(160px, 1fr) 85px 35px 12px; gap: 8px; }
-  .mobile-bottom-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .mobile-bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .mobile-bottom-link, .mobile-bottom-create { flex-direction: column; gap: 2px; min-height: 43px; }
   .mobile-bottom-link { font-size: 8px; }
   .mobile-bottom-create small { font-size: 8px; }
