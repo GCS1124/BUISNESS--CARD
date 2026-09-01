@@ -124,6 +124,53 @@ export function InlineFieldEditor({ definition, field, onCancel, onSave }: Inlin
   </div>
 }
 
+interface DirectFieldEditorProps {
+  definition: FieldDefinition
+  field?: CardField
+  onChange: (value: string, metadata?: Record<string, string>) => void
+  onBlur: (value: string, metadata?: Record<string, string>) => void
+}
+
+export function DirectFieldEditor({ definition, field, onChange, onBlur }: DirectFieldEditorProps) {
+  const isPhone = definition.type === 'phone'
+  const isEmail = definition.type === 'email'
+  const isUrl = urlTypes.has(definition.type)
+  const isAddress = definition.type === 'address'
+  const [draftMetadata, setDraftMetadata] = useState<Record<string, string>>(field?.metadata ?? {})
+  useEffect(() => {
+    if (field?.id) setDraftMetadata(field.metadata ?? {})
+  }, [field?.id])
+
+  const metadata = field?.metadata ?? draftMetadata
+  const value = field?.value ?? ''
+  const inputType = isEmail ? 'email' : isUrl ? 'url' : isPhone ? 'tel' : 'text'
+  const valueLabel = isEmail ? 'Email address' : isPhone ? 'Phone number' : isAddress ? 'Postal address' : isUrl ? 'URL or handle' : 'Value'
+  const placeholder = isAddress ? '123 Market Street, San Francisco' : placeholderFor(definition.type)
+  const commitValue = (nextValue: string, nextMetadata = metadata) => {
+    const cleanValue = isUrl && nextValue.trim() && !nextValue.trim().startsWith('http') && !nextValue.includes('@') ? `https://${nextValue.trim()}` : nextValue.trim()
+    onBlur(cleanValue, isAddress ? {} : nextMetadata)
+  }
+  const updateMetadata = (key: string, nextValue: string) => {
+    const nextMetadata = { ...metadata, [key]: nextValue }
+    setDraftMetadata(nextMetadata)
+    onChange(value, nextMetadata)
+  }
+
+  return <div className="field-option-direct">
+    <IconBadge iconKey={definition.iconKey} size="sm" />
+    <div className="direct-field-main">
+      <div className="direct-field-copy">
+        <strong>{definition.label}</strong>
+        <span>{definition.description}</span>
+      </div>
+      <div className={`direct-field-control ${isPhone ? 'direct-field-control-phone' : ''}`}>
+        {isPhone && <input className="direct-field-country-code" value={metadata.countryCode ?? ''} onChange={(event) => updateMetadata('countryCode', event.target.value)} onBlur={() => commitValue(value, metadata)} placeholder="+1" aria-label={`${definition.label} country code`} inputMode="tel" />}
+        <input type={inputType} value={value} onChange={(event) => onChange(event.target.value, isAddress ? {} : metadata)} onBlur={(event) => commitValue(event.target.value, isAddress ? {} : metadata)} placeholder={placeholder} aria-label={`${definition.label} ${valueLabel}`} autoComplete={isEmail ? 'email' : isPhone ? 'tel' : undefined} />
+      </div>
+    </div>
+  </div>
+}
+
 function defaultLabel(type: string) {
   if (type === 'email') return 'Work email'
   if (type === 'phone') return 'Mobile'
@@ -139,6 +186,7 @@ function placeholderFor(type: string) {
   if (type === 'email') return 'hello@yourdomain.com'
   if (type === 'phone') return '+1 415 555 0128'
   if (type === 'custom_text') return 'A short note for your visitors'
+  if (type === 'address') return '123 Market Street, San Francisco'
   if (urlTypes.has(type)) return 'https://'
   return 'Add a value'
 }

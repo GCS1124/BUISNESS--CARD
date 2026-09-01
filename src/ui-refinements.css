@@ -222,6 +222,18 @@ body { background: #f7f8f3; }
 .field-option-wrap { border: 1px solid transparent; border-radius: 12px; transition: border-color .18s ease, background .18s ease; }
 .field-option-wrap-expanded { border-color: #cfe4d3; background: #f8fcf8; }
 .field-option-wrap-expanded > .field-option { border-color: transparent; background: transparent; }
+.field-option-direct { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px 8px; border: 1px solid transparent; border-radius: 10px; background: #fff; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.field-option-direct:hover { border-color: #d9e9db; background: #fbfefb; box-shadow: 0 5px 13px rgba(37, 75, 47, .045); }
+.direct-field-main { display: grid; grid-template-columns: minmax(130px, .55fr) minmax(210px, 1.45fr); align-items: center; gap: 16px; width: 100%; min-width: 0; }
+.direct-field-copy { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.direct-field-copy strong { overflow: hidden; color: #405149; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.direct-field-copy span { overflow: hidden; color: #a0ada4; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
+.direct-field-control { display: flex; min-width: 0; align-items: center; gap: 7px; }
+.direct-field-control input { width: 100%; min-width: 0; height: 35px; padding: 0 10px; color: #405149; border: 1px solid #dce8dd; border-radius: 8px; outline: none; background: #f9fcf9; font: inherit; font-size: 10px; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.direct-field-control input::placeholder { color: #b3beb7; }
+.direct-field-control input:focus { border-color: #86b89a; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(134, 184, 154, .14); }
+.direct-field-control-phone > input:last-child { flex: 1; }
+.direct-field-country-code { width: 64px !important; flex: 0 0 64px; }
 .field-inline-editor { margin: 0 8px 10px; padding: 12px; border-top: 1px solid #e3eee4; border-radius: 0 0 10px 10px; background: rgba(255, 255, 255, .76); }
 .active-field-editing { display: block; padding: 0; background: #f8fcf8; }
 .active-field-editing > .field-inline-editor { margin: 0; border: 0; border-radius: 10px; background: transparent; }
@@ -243,6 +255,12 @@ body { background: #f7f8f3; }
 .field-inline-actions .button { min-height: 31px; padding: 0 10px; border-radius: 8px; font-size: 9px; }
 
 @media (max-width: 600px) {
+  .field-option-direct { align-items: flex-start; padding: 11px 8px; }
+  .direct-field-main { grid-template-columns: 1fr; gap: 8px; }
+  .direct-field-copy { padding-top: 2px; }
+  .direct-field-control { width: 100%; }
+  .direct-field-control input { height: 42px; font-size: 12px; }
+  .direct-field-country-code { width: 76px !important; flex-basis: 76px; }
   .field-inline-editor { margin-right: 5px; margin-left: 5px; padding: 11px 8px; }
   .field-inline-fields { grid-template-columns: 1fr; }
   .field-inline-value-wrap { grid-column: 1; }

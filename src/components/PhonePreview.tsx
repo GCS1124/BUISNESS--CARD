@@ -45,7 +45,7 @@ function fieldText(field: CardField) {
 
 export function PhonePreview({ bundle, onShare, publicView = false }: PhonePreviewProps) {
   const { card, fields } = bundle
-  const visibleField = (type: CardField['fieldType']) => fields.find((field) => field.fieldType === type && field.isVisible)
+  const visibleField = (type: CardField['fieldType']) => fields.find((field) => field.fieldType === type && field.isVisible && field.value.trim())
   const name = visibleField('name')?.value || 'Your name'
   const jobTitle = visibleField('job_title')?.value
   const company = visibleField('company')?.value
