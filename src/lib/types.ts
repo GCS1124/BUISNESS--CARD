@@ -127,11 +127,13 @@ export interface SignatureSocialLinks {
 export type SignatureIconStyle = 'text' | 'filled' | 'outline'
 export type SignatureButtonStyle = 'solid' | 'soft' | 'outline'
 export type SignatureAlignment = 'left' | 'center' | 'right'
+export type SignatureLayout = 'standard' | 'photo-left' | 'photo-right'
 export type SignatureImageShape = 'circle' | 'rounded' | 'square'
 export type SignatureDividerStyle = 'solid' | 'dashed' | 'dotted'
 export type SignatureIconShape = 'circle' | 'rounded' | 'square'
 
 export interface SignatureBranding {
+  layout: SignatureLayout
   primaryColor: string
   accentColor: string
   textColor: string
