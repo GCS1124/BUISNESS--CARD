@@ -7,7 +7,7 @@
 .dashboard-layout { background: color-mix(in srgb, var(--brand-surface, #f7f7f3) 92%, var(--brand-accent, #cde7e0)); }
 .sidebar { background: linear-gradient(180deg, color-mix(in srgb, var(--brand-surface, #f7f7f3) 93%, white) 0%, color-mix(in srgb, var(--brand-accent, #cde7e0) 28%, var(--brand-surface, #f7f7f3)) 100%); }
 .sidebar-link-active, .mobile-bottom-link-active { color: var(--brand-primary, #165c51); }
-.mobile-bottom-nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.mobile-bottom-nav { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .branding-preview-hero button { background: var(--brand-primary, #165c51); }
 
 @supports not (color: color-mix(in srgb, black, white)) {

@@ -7,6 +7,7 @@ import './ui-refinements.css'
 import './signatures.css'
 import './branding.css'
 import './visual-refresh.css'
+import './event-lead-capture.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

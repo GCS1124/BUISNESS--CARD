@@ -48,18 +48,20 @@ import { BrandingPage } from './components/BrandingPage'
 import { useBranding } from './components/BrandingProvider'
 import { DirectFieldEditor, InlineFieldEditor } from './components/FieldEditor'
 import { EmailSignaturesPage } from './components/EmailSignaturesPage'
+import { EventLeadCapturePage, PublicEventLeadForm } from './components/EventLeadCapturePage'
+import type { EventPageView } from './components/EventLeadCapturePage'
 import { IconBadge } from './components/IconBadge'
 import { PhonePreview } from './components/PhonePreview'
 import { categoryOrder, definitionFor, fieldDefinitions } from './lib/fieldDefinitions'
 import { createSeedBundle, defaultDesign, defaultUser, makeId, readLocalBundles, readLocalUser, slugify, writeLocalBundles, writeLocalUser } from './lib/storage'
-import { readLocalSignatures, writeLocalSignatures } from './lib/signatureStorage'
-import { createDefaultSignature, duplicateSignature, normalizeSignature } from './lib/signatures'
+import { clearGuestSignature, readGuestSignature, readLocalSignatures, writeGuestSignature, writeLocalSignatures } from './lib/signatureStorage'
+import { createDefaultSignature, createGuestSignature, duplicateSignature, normalizeSignature } from './lib/signatures'
 import { deleteRemoteBundle, deleteRemoteSignature, isSupabaseConfigured, loadPublicBundle, loadRemoteBundles, loadRemoteSignatures, persistRemoteBundle, persistRemoteSignature, remoteCardUrl, supabase, uploadCardAsset } from './lib/supabase'
 import { cardTemplates } from './lib/templateCatalog'
 import type { CardTemplate } from './lib/templateCatalog'
 import type { AppUser, Card, CardBundle, CardField, DesignSettings, EmailSignature, FieldCategory, FieldDefinition, FieldType } from './lib/types'
 
-type AppRoute = 'dashboard' | 'builder' | 'public' | 'reset' | 'overview' | 'templates' | 'insights' | 'email-signatures' | 'branding'
+type AppRoute = 'dashboard' | 'builder' | 'public' | 'reset' | 'overview' | 'templates' | 'insights' | 'email-signatures' | 'branding' | 'event-lead-capture' | 'event-public'
 type SaveState = 'saved' | 'saving' | 'error'
 type CardUpdate = Omit<Partial<Card>, 'design'> & { design?: Partial<DesignSettings> }
 
@@ -72,7 +74,7 @@ const themePresets: Array<{ name: string; description: string; design: Partial<D
   { name: 'Creative', description: 'Bold enough to be yours', design: { headerColor: '#ffd4aa', cardBackground: '#fffdf8', accentColor: '#e25b35', textColor: '#321e18', mode: 'light' }, swatches: ['#ffd4aa', '#e25b35'] },
 ]
 
-const routeFromLocation = (): { route: AppRoute; id?: string } => {
+const routeFromLocation = (): { route: AppRoute; id?: string; eventView?: EventPageView } => {
   const path = window.location.pathname
   if (path === '/cards' || path.startsWith('/dashboard')) return { route: 'dashboard' }
   if (path.startsWith('/builder/')) return { route: 'builder', id: decodeURIComponent(path.split('/')[2] ?? '') }
@@ -83,6 +85,15 @@ const routeFromLocation = (): { route: AppRoute; id?: string } => {
   if (path.startsWith('/insights')) return { route: 'insights' }
   if (path.startsWith('/email-signatures')) return { route: 'email-signatures' }
   if (path.startsWith('/branding')) return { route: 'branding' }
+  if (path.startsWith('/events/') && path.endsWith('/connect')) return { route: 'event-public', id: decodeURIComponent(path.split('/')[2] ?? '') }
+  if (path === '/event-lead-capture' || path === '/events') return { route: 'event-lead-capture', eventView: 'dashboard' }
+  if (path === '/events/new') return { route: 'event-lead-capture', eventView: 'new' }
+  if (path.startsWith('/events/')) {
+    const segments = path.split('/').filter(Boolean)
+    const view = segments[2] as EventPageView | undefined
+    const allowedViews: EventPageView[] = ['edit', 'capture', 'leads', 'analytics', 'report', 'integrations']
+    return { route: 'event-lead-capture', id: decodeURIComponent(segments[1] ?? ''), eventView: allowedViews.includes(view ?? 'edit') ? view : 'edit' }
+  }
   return { route: 'overview' }
 }
 
@@ -91,9 +102,13 @@ export default function App() {
   const initialRoute = routeFromLocation()
   const [route, setRoute] = useState<AppRoute>(initialRoute.route)
   const [routeId, setRouteId] = useState(initialRoute.id)
+  const [eventView, setEventView] = useState<EventPageView>(initialRoute.eventView ?? 'dashboard')
   const [user, setUser] = useState<AppUser | null>(null)
   const [bundles, setBundles] = useState<CardBundle[]>([])
   const [signatures, setSignatures] = useState<EmailSignature[]>([])
+  const [guestSignature, setGuestSignature] = useState<EmailSignature | null>(null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [signatureContinuationId, setSignatureContinuationId] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
   const [remotePublicBundle, setRemotePublicBundle] = useState<CardBundle | undefined>()
   const [saveState, setSaveState] = useState<SaveState>('saved')
@@ -101,6 +116,7 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
   const signatureSaveTimer = useRef<number | undefined>(undefined)
+  const guestClaimInFlight = useRef(false)
   const [signatureSaveState, setSignatureSaveState] = useState<SaveState>('saved')
   const [signatureSaveError, setSignatureSaveError] = useState('')
   const canPersistRemote = Boolean(isSupabaseConfigured && supabase && user && user.id !== defaultUser.id)
@@ -108,6 +124,63 @@ export default function App() {
   const showToast = (message: string, tone: 'success' | 'error' = 'success') => {
     setToast({ message, tone })
     window.setTimeout(() => setToast(null), 3400)
+  }
+
+  const updateGuestSignature = (nextSignature: EmailSignature) => {
+    const normalized = normalizeSignature({ ...nextSignature, userId: '' })
+    setGuestSignature(normalized)
+    writeGuestSignature(normalized)
+  }
+
+  const uploadGuestImage = async (value: string, userId: string, kind: 'profile' | 'logo') => {
+    if (!isSupabaseConfigured || !supabase || !value.startsWith('data:image/')) return value
+    const response = await fetch(value)
+    const blob = await response.blob()
+    const file = new File([blob], `signature-${kind}.${blob.type.split('/')[1] || 'png'}`, { type: blob.type || 'image/png' })
+    return (await uploadCardAsset(file, userId, kind)) || value
+  }
+
+  const persistGuestAfterAuth = async (nextUser: AppUser, draftOverride?: EmailSignature | null) => {
+    const pending = draftOverride ?? guestSignature ?? readGuestSignature()
+    setUser(nextUser)
+    writeLocalUser(nextUser)
+    setAuthModalOpen(false)
+    if (!pending) {
+      void loadRemoteBundles(nextUser.id).then(setBundles).catch(() => setBundles([]))
+      void loadRemoteSignatures(nextUser.id).then((nextSignatures) => setSignatures(nextSignatures.map((signature) => normalizeSignature(signature)))).catch(() => setSignatures([]))
+      return
+    }
+    try {
+      let saved = normalizeSignature({ ...pending, userId: nextUser.id, updatedAt: new Date().toISOString() })
+      const [profileImageUrl, companyLogoUrl] = await Promise.all([uploadGuestImage(saved.profileImageUrl, nextUser.id, 'profile'), uploadGuestImage(saved.companyLogoUrl, nextUser.id, 'logo')])
+      saved = normalizeSignature({ ...saved, profileImageUrl, companyLogoUrl })
+      if (isSupabaseConfigured && supabase) await persistRemoteSignature(saved)
+      setSignatures([saved])
+      writeLocalSignatures([saved])
+      clearGuestSignature()
+      setGuestSignature(null)
+      setSignatureContinuationId(saved.id)
+      setSignatureSaveState('saved')
+      showToast('Your signature is saved and ready to install')
+      void loadRemoteBundles(nextUser.id).then(setBundles).catch(() => setBundles([]))
+    } catch (error) {
+      setSignatures([normalizeSignature({ ...pending, userId: nextUser.id })])
+      setSignatureContinuationId(pending.id)
+      setSignatureSaveState('error')
+      setSignatureSaveError(error instanceof Error ? error.message : 'Could not save the signature yet.')
+      showToast('Your signature is preserved. We could not finish saving it remotely.', 'error')
+    }
+  }
+
+  const completeAuthenticatedUser = (nextUser: AppUser) => {
+    if (guestClaimInFlight.current) return
+    guestClaimInFlight.current = true
+    void persistGuestAfterAuth(nextUser).finally(() => { guestClaimInFlight.current = false })
+  }
+
+  const uploadSignatureAsset = async (file: File, kind: 'profile' | 'logo') => {
+    if (!user || !isSupabaseConfigured || !supabase || user.id === defaultUser.id) return null
+    return uploadCardAsset(file, user.id, kind)
   }
 
   useEffect(() => {
@@ -128,33 +201,52 @@ export default function App() {
       const { data } = await supabase.auth.getSession()
       if (!active) return
       if (!data.session?.user) {
+        if (initialRoute.route === 'email-signatures') {
+          const draft = readGuestSignature() ?? createGuestSignature()
+          setGuestSignature(normalizeSignature({ ...draft, userId: '' }))
+          writeGuestSignature(normalizeSignature({ ...draft, userId: '' }))
+        }
         setSessionReady(true)
         return
       }
       const remoteUser: AppUser = { id: data.session.user.id, email: data.session.user.email ?? '', name: (data.session.user.user_metadata?.full_name as string) || data.session.user.email?.split('@')[0] || `${branding.productName} member` }
-      setUser(remoteUser)
-      writeLocalUser(remoteUser)
-      try {
-        const remoteBundles = await loadRemoteBundles(remoteUser.id)
-        if (active) setBundles(remoteBundles)
-        try {
-          const remoteSignatures = await loadRemoteSignatures(remoteUser.id)
-          if (active) setSignatures(remoteSignatures.map((signature) => normalizeSignature(signature)))
-        } catch {
-          if (active) setSignatures([])
+      const pendingGuest = readGuestSignature()
+      if (pendingGuest && initialRoute.route === 'email-signatures') {
+        if (!guestClaimInFlight.current) {
+          guestClaimInFlight.current = true
+          void persistGuestAfterAuth(remoteUser, pendingGuest).finally(() => { guestClaimInFlight.current = false; if (active) setSessionReady(true) })
         }
-      } catch (error) {
-        if (active) showToast(error instanceof Error ? error.message : 'Could not load your cards.', 'error')
-      } finally {
-        if (active) setSessionReady(true)
+      } else {
+        setUser(remoteUser)
+        writeLocalUser(remoteUser)
+        try {
+          const remoteBundles = await loadRemoteBundles(remoteUser.id)
+          if (active) setBundles(remoteBundles)
+          try {
+            const remoteSignatures = await loadRemoteSignatures(remoteUser.id)
+            if (active) setSignatures(remoteSignatures.map((signature) => normalizeSignature(signature)))
+          } catch {
+            if (active) setSignatures([])
+          }
+        } catch (error) {
+          if (active) showToast(error instanceof Error ? error.message : 'Could not load your cards.', 'error')
+        } finally {
+          if (active) setSessionReady(true)
+        }
       }
     }
     void boot()
     const authListener = supabase?.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const nextUser: AppUser = { id: session.user.id, email: session.user.email ?? '', name: (session.user.user_metadata?.full_name as string) || session.user.email?.split('@')[0] || `${branding.productName} member` }
-        setUser(nextUser)
-        writeLocalUser(nextUser)
+        const pendingGuest = readGuestSignature()
+        if (route === 'email-signatures' && pendingGuest && !guestClaimInFlight.current) {
+          guestClaimInFlight.current = true
+          void persistGuestAfterAuth(nextUser, pendingGuest).finally(() => { guestClaimInFlight.current = false })
+        } else {
+          setUser(nextUser)
+          writeLocalUser(nextUser)
+        }
       } else if (isSupabaseConfigured) setUser(null)
     })
     return () => {
@@ -165,11 +257,12 @@ export default function App() {
     }
   }, [])
 
-  const navigate = (nextRoute: AppRoute, id?: string) => {
-    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : nextRoute === 'email-signatures' ? '/email-signatures' : `/${nextRoute}`
+  const navigate = (nextRoute: AppRoute, id?: string, nextEventView: EventPageView = 'dashboard') => {
+    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : nextRoute === 'email-signatures' ? '/email-signatures' : nextRoute === 'event-public' ? `/events/${id}/connect` : nextRoute === 'event-lead-capture' ? nextEventView === 'dashboard' ? '/event-lead-capture' : nextEventView === 'new' ? '/events/new' : `/events/${id}/${nextEventView}` : `/${nextRoute}`
     window.history.pushState({}, '', path)
     setRoute(nextRoute)
     setRouteId(id)
+    if (nextRoute === 'event-lead-capture') setEventView(nextEventView)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -331,16 +424,19 @@ export default function App() {
 
   if (!sessionReady) return <LoadingScreen />
   if (route === 'public') return <PublicCard bundle={publicBundle} onBack={() => navigate('dashboard')} onToast={showToast} />
+  if (route === 'event-public') return <PublicEventLeadForm publicSlug={routeId ?? ''} />
   if (route === 'reset') return <ResetPasswordScreen onComplete={() => navigate('dashboard')} />
   if (route === 'overview') return <LandingPage bundle={bundles[0]} onCreate={() => user ? createCard() : navigate('dashboard')} onLogin={() => navigate('dashboard')} onOpenBuilder={() => activeBundle ? navigate('builder', activeBundle.card.id) : user ? createCard() : navigate('dashboard')} />
-  if (!user) return <AuthScreen onDemo={() => { setUser(defaultUser); setBundles(readLocalBundles()); setSignatures(readLocalSignatures().map((signature) => normalizeSignature(signature))); setSessionReady(true) }} onAuthenticated={(nextUser) => { setUser(nextUser); setSessionReady(true); void loadRemoteBundles(nextUser.id).then(setBundles).catch(() => setBundles([])); void loadRemoteSignatures(nextUser.id).then((nextSignatures) => setSignatures(nextSignatures.map((signature) => normalizeSignature(signature)))).catch(() => setSignatures([])) }} />
+  if (!user && route === 'email-signatures') return <div className="app-shell guest-app-shell"><EmailSignaturesPage user={undefined} bundles={bundles} signatures={[]} guestSignature={guestSignature ?? createGuestSignature()} saveState={signatureSaveState} saveError={signatureSaveError} onCreate={() => guestSignature ?? createGuestSignature()} onUpdate={() => undefined} onGuestUpdate={updateGuestSignature} onDuplicate={() => guestSignature ?? createGuestSignature()} onDelete={async () => undefined} onCards={() => navigate('dashboard')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => undefined} onBranding={() => navigate('branding')} onSignOut={() => undefined} onRequestAuth={() => setAuthModalOpen(true)} onToast={showToast} />{toast && <Toast toast={toast} onClose={() => setToast(null)} />}{authModalOpen && <AuthScreen variant="modal" onClose={() => setAuthModalOpen(false)} title="Your signature is ready." description="Create a free Cardly account or sign in to save and install it." onDemo={() => { const draft = guestSignature ?? readGuestSignature(); const saved = draft ? normalizeSignature({ ...draft, userId: defaultUser.id }) : null; setUser(defaultUser); setBundles(readLocalBundles()); setSignatures(saved ? [saved] : readLocalSignatures().map((signature) => normalizeSignature(signature))); if (saved) writeLocalSignatures([saved]); clearGuestSignature(); setGuestSignature(null); setSignatureContinuationId(saved?.id ?? null); setAuthModalOpen(false); setSessionReady(true) }} onAuthenticated={completeAuthenticatedUser} />}</div>
+  if (!user) return <AuthScreen onDemo={() => { setUser(defaultUser); setBundles(readLocalBundles()); setSignatures(readLocalSignatures().map((signature) => normalizeSignature(signature))); setSessionReady(true) }} onAuthenticated={completeAuthenticatedUser} />
 
   return <div className="app-shell">
     {route === 'dashboard' && <Dashboard user={user} bundles={bundles} onCreate={createCard} onCards={() => navigate('dashboard')} onEdit={(id) => navigate('builder', id)} onDelete={deleteCard} onOpenPublic={(slug) => navigate('public', slug)} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => navigate('email-signatures')} onBranding={() => navigate('branding')} onSignOut={signOut} />}
     {route === 'templates' && <TemplatesPage user={user} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onInsights={() => navigate('insights')} onSignatures={() => navigate('email-signatures')} onBranding={() => navigate('branding')} onCreate={createCard} onUseTemplate={createCardFromTemplate} onSignOut={signOut} />}
     {route === 'insights' && <InsightsPage user={user} bundles={bundles} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onSignatures={() => navigate('email-signatures')} onBranding={() => navigate('branding')} onCreate={createCard} onEdit={(id) => navigate('builder', id)} onSignOut={signOut} />}
-    {route === 'email-signatures' && <EmailSignaturesPage user={user} bundles={bundles} signatures={signatures} saveState={signatureSaveState} saveError={signatureSaveError} onCreate={createSignature} onUpdate={updateSignature} onDuplicate={duplicateExistingSignature} onDelete={deleteSignature} onCards={() => navigate('dashboard')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => undefined} onBranding={() => navigate('branding')} onSignOut={signOut} onToast={showToast} />}
+    {route === 'email-signatures' && <EmailSignaturesPage user={user} bundles={bundles} signatures={signatures} initialSignatureId={signatureContinuationId} saveState={signatureSaveState} saveError={signatureSaveError} onCreate={createSignature} onUpdate={updateSignature} onDuplicate={duplicateExistingSignature} onDelete={deleteSignature} onCards={() => navigate('dashboard')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => undefined} onBranding={() => navigate('branding')} onSignOut={signOut} onUploadAsset={uploadSignatureAsset} onToast={showToast} />}
     {route === 'branding' && <div className="dashboard-layout"><WorkspaceSidebar active="branding" user={user} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => navigate('email-signatures')} onBranding={() => undefined} onSignOut={signOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><BrandLockup /><button className="mobile-overview-link" onClick={() => navigate('dashboard')}><ArrowLeft size={14} /> Cards</button></div><BrandingPage /></main><MobileWorkspaceNav active="branding" onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => navigate('email-signatures')} onBranding={() => undefined} onCreate={createCard} /></div>}
+    {route === 'event-lead-capture' && <EventLeadCapturePage user={user} view={eventView} eventId={routeId} bundles={bundles} onNavigate={(view, id) => navigate('event-lead-capture', id, view)} onToast={showToast} />}
     {route === 'builder' && (activeBundle ? <Builder bundle={activeBundle} user={user} saveState={saveState} saveError={saveError} onBack={() => navigate('dashboard')} onUpdate={updateBundle} onToast={showToast} onOpenPublic={(slug) => navigate('public', slug)} /> : <EmptyRoute onCreate={createCard} onBack={() => navigate('dashboard')} />)}
     {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
   </div>
@@ -366,14 +462,16 @@ interface DashboardProps {
   onSignOut: () => void
 }
 
-type WorkspaceSection = 'cards' | 'templates' | 'insights' | 'signatures' | 'branding'
+type WorkspaceSection = 'cards' | 'templates' | 'insights' | 'signatures' | 'branding' | 'events'
 
-function WorkspaceSidebar({ active, user, onCards, onOverview, onTemplates, onInsights, onSignatures, onBranding, onSignOut }: { active: WorkspaceSection; user: AppUser; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onSignOut: () => void }) {
-  return <aside className="sidebar"><BrandLockup /><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={17} /> Templates</button><button className={`sidebar-link ${active === 'signatures' ? 'sidebar-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={17} /> Email signatures</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={17} /> Insights</button><button className={`sidebar-link ${active === 'branding' ? 'sidebar-link-active' : ''}`} aria-current={active === 'branding' ? 'page' : undefined} onClick={onBranding}><Settings2 size={17} /> Branding</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Set the identity people see across your workspace.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div></aside>
+function WorkspaceSidebar({ active, user, onCards, onOverview, onTemplates, onInsights, onSignatures, onBranding, onSignOut, onEvents }: { active: WorkspaceSection; user: AppUser; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onSignOut: () => void; onEvents?: () => void }) {
+  const goEvents = onEvents ?? (() => window.location.assign('/event-lead-capture'))
+  return <aside className="sidebar"><BrandLockup /><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={17} /> Templates</button><button className={`sidebar-link ${active === 'signatures' ? 'sidebar-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={17} /> Email signatures</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={17} /> Insights</button><button className={`sidebar-link ${active === 'events' ? 'sidebar-link-active' : ''}`} aria-current={active === 'events' ? 'page' : undefined} onClick={goEvents}><QrCode size={17} /> Event lead capture</button><button className={`sidebar-link ${active === 'branding' ? 'sidebar-link-active' : ''}`} aria-current={active === 'branding' ? 'page' : undefined} onClick={onBranding}><Settings2 size={17} /> Branding</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Set the identity people see across your workspace.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div></aside>
 }
 
-function MobileWorkspaceNav({ active, onCards, onOverview, onTemplates, onInsights, onSignatures, onBranding, onCreate }: { active: WorkspaceSection; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onCreate: () => void }) {
-  return <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'signatures' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={16} /><span>Signatures</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={16} /><span>Insights</span></button><button className={`mobile-bottom-link ${active === 'branding' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'branding' ? 'page' : undefined} onClick={onBranding}><Settings2 size={16} /><span>Branding</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
+function MobileWorkspaceNav({ active, onCards, onOverview, onTemplates, onInsights, onSignatures, onBranding, onCreate, onEvents }: { active: WorkspaceSection; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onCreate: () => void; onEvents?: () => void }) {
+  const goEvents = onEvents ?? (() => window.location.assign('/event-lead-capture'))
+  return <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'signatures' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={16} /><span>Signatures</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={16} /><span>Insights</span></button><button className={`mobile-bottom-link ${active === 'events' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'events' ? 'page' : undefined} onClick={goEvents}><QrCode size={16} /><span>Events</span></button><button className={`mobile-bottom-link ${active === 'branding' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'branding' ? 'page' : undefined} onClick={onBranding}><Settings2 size={16} /><span>Branding</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
 }
 
 function Dashboard({ user, bundles, onCreate, onCards, onEdit, onDelete, onOpenPublic, onOverview, onTemplates, onInsights, onSignatures, onBranding, onSignOut }: DashboardProps) {

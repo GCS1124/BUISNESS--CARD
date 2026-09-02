@@ -568,3 +568,185 @@ button, input, select { font-family: inherit; }
   .signature-setup-help { padding: 16px; border-radius: 14px; }
   .signature-preview-heading h2 { font-size: 17px; }
 }
+
+/* Signature generator v2: guided editor workflow, using Cardly tokens. */
+.guest-app-shell,
+.signature-guest-page { min-height: 100vh; background: #f3f6fc; }
+.signature-guest-header { position: sticky; z-index: 8; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 17px clamp(18px, 4vw, 56px); border-bottom: 1px solid #d8e4ef; background: rgba(255,255,255,.92); box-shadow: 0 8px 24px rgba(45,73,111,.06); backdrop-filter: blur(18px); }
+.signature-guest-brand { display: flex; align-items: center; gap: 17px; min-width: 0; }
+.signature-guest-brand .brand { flex: 0 0 auto; }
+.signature-guest-divider { width: 1px; height: 34px; background: #d8e4ef; }
+.signature-guest-brand > div:last-child { display: grid; gap: 3px; min-width: 0; }
+.signature-guest-brand > div:last-child strong { overflow: hidden; color: #13243c; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.signature-guest-actions { display: flex; align-items: center; gap: 8px; }
+.signature-editor-page { background: #f3f6fc; }
+.signature-editor-header { border-bottom-color: #d8e4ef; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(45,73,111,.06); }
+.signature-editor-actions { flex-wrap: wrap; justify-content: flex-end; }
+.signature-finish-button { box-shadow: 0 8px 18px rgba(22,92,81,.16); }
+.signature-editor-layout { grid-template-columns: minmax(320px, .72fr) minmax(490px, 1.28fr); gap: 22px; max-width: 1500px; padding-top: 26px; }
+.signature-editor-left { display: grid; align-content: start; gap: 13px; min-width: 0; }
+.signature-section-nav { position: sticky; z-index: 3; top: 101px; display: grid; gap: 4px; padding: 13px; border: 1px solid #d8e4ef; border-radius: 18px; background: rgba(255,255,255,.95); box-shadow: 0 12px 28px rgba(45,73,111,.06); }
+.signature-section-nav-intro { display: grid; gap: 3px; padding: 7px 9px 12px; border-bottom: 1px solid #edf2f7; }
+.signature-section-nav-intro strong { color: #13243c; font-size: 13px; }
+.signature-section-link { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 10px 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #71839a; text-align: left; cursor: pointer; transition: background .16s ease, border .16s ease, color .16s ease, transform .16s ease; }
+.signature-section-link:hover { border-color: #d8e4ef; background: #f6f9fd; color: #2c5870; transform: translateX(2px); }
+.signature-section-link-active { border-color: #c8dfd8; background: #eaf5f1; color: #165c51; }
+.signature-section-link-active:hover { border-color: #b7d6cc; background: #e5f3ee; color: #165c51; }
+.signature-section-icon { display: grid; flex: 0 0 auto; place-items: center; width: 31px; height: 31px; border-radius: 10px; background: #f1f5fa; color: #8b9db3; }
+.signature-section-link-active .signature-section-icon { background: #d2ebe2; color: #165c51; }
+.signature-section-link > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.signature-section-link strong { color: inherit; font-size: 11px; }
+.signature-section-link small { overflow: hidden; color: #9babbf; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.signature-section-chevron { flex: 0 0 auto; margin-left: auto; color: #afbccb; transform: rotate(-90deg); }
+.signature-section-link-active .signature-section-chevron { color: #4f927d; transform: rotate(0); }
+.signature-editor-panel { min-width: 0; overflow: hidden; border: 1px solid #d8e4ef; border-radius: 18px; background: #fff; box-shadow: 0 12px 28px rgba(45,73,111,.055); }
+.signature-section-content { display: grid; gap: 24px; padding: 25px; }
+.signature-section-intro { display: grid; gap: 6px; padding-bottom: 3px; }
+.signature-section-intro h2 { margin: 0; color: #13243c; font-size: clamp(22px, 2.5vw, 29px); letter-spacing: -.055em; }
+.signature-section-intro > p:last-child { max-width: 600px; margin: 0; color: #74859a; font-size: 11px; line-height: 1.65; }
+.signature-subsection { display: grid; gap: 13px; padding-top: 20px; border-top: 1px solid #edf2f7; }
+.signature-subsection-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.signature-subsection-heading h3 { margin: 3px 0 0; color: #1b324c; font-size: 16px; letter-spacing: -.035em; }
+.signature-subsection-heading > span { width: 26px; height: 26px; border-radius: 9px; background: linear-gradient(135deg,#eaf5f1,#f6f9fd); }
+.signature-section-content .signature-section-help { margin: -2px 0 1px; }
+.signature-template-picker-rich { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.signature-template-option { min-height: 78px; padding: 10px; border-color: #dfe8f1; background: #fbfdff; }
+.signature-template-option:hover { border-color: #9bc7bb; background: #f3faf7; }
+.signature-template-option-active { border-color: #74b19b; background: #edf8f3; box-shadow: 0 0 0 3px rgba(116,177,155,.11); }
+.signature-template-mini-preview { position: relative; display: block; flex: 0 0 auto; width: 76px; height: 54px; overflow: hidden; border: 1px solid rgba(19,36,60,.08); border-radius: 9px; }
+.signature-template-mini-preview > span { position: absolute; top: 8px; left: 8px; width: 15px; height: 15px; border-radius: 50%; }
+.signature-template-mini-preview i,
+.signature-template-mini-preview b,
+.signature-template-mini-preview em { position: absolute; left: 30px; display: block; height: 3px; border-radius: 4px; opacity: .85; }
+.signature-template-mini-preview i { top: 11px; width: 32px; }
+.signature-template-mini-preview b { top: 19px; width: 24px; opacity: .38; }
+.signature-template-mini-preview em { top: 35px; left: 8px; width: 57px; opacity: .34; }
+.signature-template-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.signature-template-copy strong { color: #223b55; font-size: 11px; }
+.signature-template-copy small { overflow: hidden; color: #8c9caf; font-size: 9px; line-height: 1.35; text-overflow: ellipsis; }
+.signature-color-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+.signature-color-input { gap: 7px; }
+.signature-color-input > span { display: grid; gap: 2px; }
+.signature-color-input > span strong { color: #38536c; font-size: 10px; }
+.signature-color-input > span small { color: #99a7b7; font-size: 8px; font-weight: 600; }
+.signature-color-input > div { padding: 5px; border-color: #dfe8f1; background: #fbfdff; }
+.signature-design-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.signature-select-label { color: #667d94; }
+.signature-select-label select,
+.signature-select-label input { border-color: #dfe8f1; background: #fbfdff; color: #304c65; }
+.signature-range-grid { gap: 15px 18px; }
+.signature-range-input { color: #667d94; }
+.signature-range-input strong { color: #91a2b4; }
+.signature-range-input input { accent-color: #1e806e; }
+.signature-social-list { display: grid; gap: 9px; }
+.signature-social-row { display: grid; grid-template-columns: 31px minmax(0,1fr) 30px; align-items: end; gap: 9px; padding: 9px; border: 1px solid #e1eaf2; border-radius: 12px; background: #fbfdff; }
+.signature-social-row > label { display: grid; gap: 5px; min-width: 0; color: #38536c; font-size: 10px; font-weight: 800; }
+.signature-social-row input { width: 100%; padding: 10px 11px; border: 1px solid #dfe8f1; border-radius: 9px; outline: 0; background: #fff; color: #2c4761; font: inherit; font-size: 11px; }
+.signature-social-row input:focus { border-color: #6eae98; box-shadow: 0 0 0 3px rgba(110,174,152,.12); }
+.signature-social-badge { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 10px; background: #dff0ea; color: #267661; }
+.signature-add-social { display: flex; align-items: center; gap: 9px; padding: 12px; border: 1px dashed #afd0c3; border-radius: 12px; background: #f4fbf7; color: #307763; }
+.signature-add-social > span { display: grid; flex: 1; gap: 3px; }
+.signature-add-social strong { font-size: 11px; }
+.signature-add-social small { color: #86a596; font-size: 9px; }
+.signature-add-social select { min-width: 132px; padding: 8px; border: 1px solid #cde1d8; border-radius: 8px; background: #fff; color: #397363; font: inherit; font-size: 10px; }
+.signature-feature-toggle { display: flex; align-items: flex-start; gap: 10px; padding: 13px; border: 1px solid #d9e9e1; border-radius: 12px; background: #f6fbf8; color: #286852; }
+.signature-feature-toggle input { margin-top: 2px; accent-color: #1b806d; }
+.signature-feature-toggle span { display: grid; gap: 4px; }
+.signature-feature-toggle strong { color: #245e4f; font-size: 11px; }
+.signature-feature-toggle small { color: #7e9d8e; font-size: 9px; }
+.signature-textarea-label { display: grid; gap: 6px; color: #667d94; font-size: 10px; font-weight: 800; }
+.signature-textarea-label textarea { resize: vertical; width: 100%; padding: 10px 11px; border: 1px solid #dfe8f1; border-radius: 9px; outline: 0; background: #fbfdff; color: #304c65; font: inherit; font-size: 11px; line-height: 1.5; }
+.signature-textarea-label textarea:focus { border-color: #6eae98; box-shadow: 0 0 0 3px rgba(110,174,152,.12); }
+.signature-auth-prompt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px; border: 1px solid #d8e4ef; border-radius: 12px; background: #f8fbff; color: #267661; text-align: left; cursor: pointer; }
+.signature-auth-prompt > span { display: grid; flex: 1; gap: 3px; }
+.signature-auth-prompt strong { color: #294963; font-size: 11px; }
+.signature-auth-prompt small { color: #8b9db0; font-size: 9px; }
+.signature-editor-footer-cta { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 17px; border: 1px solid #b9ddd0; border-radius: 15px; background: linear-gradient(135deg,#eaf7f0,#f9fcff); }
+.signature-editor-footer-cta > div { display: grid; gap: 4px; }
+.signature-editor-footer-cta strong { color: #1d4f43; font-size: 11px; }
+.signature-editor-footer-cta .button { flex: 0 0 auto; }
+.signature-copy-panel { border-color: #c5dce8; background: linear-gradient(135deg,#e9f5ff,#f8fcff); }
+.signature-preview-column { top: 102px; }
+.signature-preview-heading { align-items: flex-start; }
+.signature-preview-heading h2 { color: #13243c; font-size: clamp(22px, 2.6vw, 30px); }
+.signature-preview-heading p:last-child { margin: 6px 0 0; color: #8293a7; font-size: 10px; }
+.signature-preview-shell { min-height: 520px; border-color: #d3e0eb; box-shadow: 0 22px 50px rgba(45,73,111,.12); }
+.signature-email-window { min-height: 510px; }
+.signature-preview-note { border-color: #c9ddea; background: #f1f8ff; }
+.signature-file-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 10px; border: 1px solid #c9e1d6; border-radius: 8px; background: #f0faf5; color: #347864; font-size: 9px; font-weight: 800; cursor: pointer; }
+.signature-file-button input { display: none; }
+.signature-asset-input { gap: 7px; }
+.signature-asset-input > span { color: #537089; font-size: 10px; }
+.signature-asset-input input { border-color: #dfe8f1; background: #fbfdff; }
+.signature-preview-focus { display: grid; place-items: start; gap: 9px; min-height: 350px; padding: 16px; }
+.signature-preview-focus h2 { margin: 0; color: #13243c; font-size: 26px; letter-spacing: -.055em; }
+.signature-preview-focus > p:not(.eyebrow) { max-width: 410px; margin: 0 0 8px; color: #75879a; font-size: 11px; line-height: 1.65; }
+.signature-preview-focus-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: #dff1e9; color: #1c7662; }
+.rotate-180 { transform: rotate(180deg); }
+.signature-ready-page { padding: 29px clamp(18px,4vw,56px) 90px; }
+.signature-ready-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 27px; border: 1px solid #d8e4ef; border-radius: 20px; background: #fff; box-shadow: 0 12px 28px rgba(45,73,111,.06); }
+.signature-ready-header h1 { margin: 4px 0 8px; color: #13243c; font-size: clamp(27px,4vw,44px); letter-spacing: -.07em; }
+.signature-ready-header p:last-child { max-width: 570px; margin: 0; color: #74859a; font-size: 12px; line-height: 1.55; }
+.signature-ready-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.signature-ready-grid { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(310px,.85fr); gap: 20px; margin-top: 20px; }
+.signature-ready-grid > section { padding: 19px; border: 1px solid #d8e4ef; border-radius: 18px; background: #fff; box-shadow: 0 12px 28px rgba(45,73,111,.05); }
+.signature-ready-preview-label { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: #6e8298; font-size: 10px; font-weight: 800; }
+.signature-ready-note { display: flex; align-items: center; gap: 7px; margin-top: 11px; padding: 11px; border-radius: 10px; background: #f0faf5; color: #4f8a72; font-size: 10px; }
+.signature-ready-grid aside { display: grid; align-content: start; gap: 14px; }
+.signature-ready-next { padding: 20px; border: 1px solid #c5dce8; border-radius: 17px; background: linear-gradient(145deg,#eef8ff,#f9fcff); }
+.signature-ready-next h2 { margin: 4px 0 7px; color: #193b56; font-size: 20px; letter-spacing: -.045em; }
+.signature-ready-next p:not(.eyebrow) { margin: 0 0 16px; color: #7890a4; font-size: 11px; line-height: 1.55; }
+.auth-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15,34,55,.34); backdrop-filter: blur(8px); }
+.auth-modal-card { width: min(100%, 470px); padding: 14px; border: 1px solid rgba(255,255,255,.85); border-radius: 23px; background: #f7fbff; box-shadow: 0 30px 90px rgba(18,45,73,.25); }
+.auth-modal-card > .brand { padding: 7px 10px 12px; }
+.auth-modal-card .auth-form-card { position: relative; width: 100%; max-width: none; border: 1px solid #d8e4ef; box-shadow: none; }
+.auth-modal-close { position: absolute; z-index: 1; top: 17px; right: 17px; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #d8e4ef; border-radius: 50%; background: #fff; color: #71859a; cursor: pointer; }
+
+@media (max-width: 1100px) {
+  .signature-editor-layout { grid-template-columns: minmax(286px,.7fr) minmax(390px,1.3fr); }
+  .signature-section-content { padding: 20px; }
+  .signature-template-picker-rich { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 840px) {
+  .signature-guest-header { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .signature-guest-actions { width: 100%; }
+  .signature-guest-actions .button { flex: 1; }
+  .signature-editor-layout { grid-template-columns: 1fr; }
+  .signature-section-nav { position: static; display: flex; overflow-x: auto; align-items: stretch; gap: 6px; padding: 8px; }
+  .signature-section-nav-intro { display: none; }
+  .signature-section-link { flex: 0 0 128px; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 80px; padding: 9px; }
+  .signature-section-link > span:nth-child(2) { gap: 3px; }
+  .signature-section-chevron { display: none; }
+  .signature-preview-column { position: static; order: -1; }
+  .signature-ready-header { align-items: flex-start; flex-direction: column; }
+  .signature-ready-actions { justify-content: flex-start; }
+  .signature-ready-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .signature-guest-brand { align-items: flex-start; gap: 10px; }
+  .signature-guest-brand .brand { transform: scale(.9); transform-origin: left top; }
+  .signature-guest-divider { display: none; }
+  .signature-guest-brand > div:last-child strong { max-width: 210px; white-space: normal; }
+  .signature-editor-header { align-items: flex-start; padding: 14px; }
+  .signature-editor-title { width: 100%; }
+  .signature-editor-actions { width: 100%; justify-content: stretch; }
+  .signature-editor-actions .button { flex: 1; min-width: 0; }
+  .signature-editor-actions .signature-finish-button { flex-basis: 100%; }
+  .signature-editor-layout { padding: 14px 10px 112px; }
+  .signature-section-content { gap: 18px; padding: 17px; }
+  .signature-section-intro h2 { font-size: 24px; }
+  .signature-color-grid, .signature-design-form-grid { grid-template-columns: 1fr; }
+  .signature-add-social { align-items: flex-start; flex-wrap: wrap; }
+  .signature-add-social select { width: 100%; }
+  .signature-editor-footer-cta { align-items: stretch; flex-direction: column; }
+  .signature-editor-footer-cta .button { width: 100%; }
+  .signature-copy-panel { align-items: stretch; flex-direction: column; }
+  .signature-copy-actions { grid-template-columns: 1fr; }
+  .signature-ready-page { padding: 15px 10px 100px; }
+  .signature-ready-header { padding: 20px; }
+  .signature-ready-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .signature-ready-actions .button:first-child { grid-column: 1 / -1; }
+  .signature-ready-grid > section { padding: 12px; }
+}
