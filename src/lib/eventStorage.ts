@@ -330,9 +330,15 @@ export async function loadPublicEvent(publicSlug: string): Promise<{ event: Even
 }
 
 export async function persistPublicLead(lead: EventLead): Promise<void> {
-  if (!supabase) return
-  const { error } = await supabase.from('event_leads').insert(toLeadRow(lead))
-  if (error) throw error
+  if (supabase) {
+    const { error } = await supabase.from('event_leads').insert(toLeadRow(lead))
+    if (error) throw error
+    return
+  }
+  const workspace = await readEventWorkspace(lead.organizationId)
+  if (!workspace.events.some((event) => event.id === lead.eventId)) throw new Error('Event workspace not found')
+  if (workspace.leads.some((item) => item.id === lead.id)) return
+  await writeEventWorkspace(lead.organizationId, { ...workspace, leads: [...workspace.leads, lead] })
 }
 
 export async function readPublicEventFromLocal(publicSlug: string): Promise<{ event: EventCampaign; qualifiers: EventQualifier[] } | undefined> {
