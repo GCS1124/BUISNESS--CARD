@@ -1,0 +1,570 @@
+/*
+ * Generator-inspired visual system.
+ * Keeps Cardly's identity and interactions, while giving every workspace
+ * the calm, structured feel of a polished creation tool.
+ */
+:root {
+  --visual-bg: #f3f6fc;
+  --visual-panel: #ffffff;
+  --visual-ink: #1d2935;
+  --visual-muted: #7b8794;
+  --visual-faint: #a4afbb;
+  --visual-line: #e1e7ef;
+  --visual-soft: #edf5ff;
+  --visual-shadow: 0 16px 36px rgba(46, 68, 101, .08);
+  --visual-shadow-soft: 0 8px 22px rgba(46, 68, 101, .055);
+}
+
+body {
+  color: var(--visual-ink);
+  background: var(--visual-bg);
+}
+
+button, input, select { font-family: inherit; }
+
+:where(h1, h2, h3, h4, h5, h6) {
+  color: var(--visual-ink);
+  letter-spacing: -0.02em !important;
+}
+
+.app-shell,
+.dashboard-layout {
+  background: var(--visual-bg) !important;
+}
+
+.app-shell {
+  background-image: radial-gradient(circle at 91% 0%, rgba(205, 225, 250, .62), transparent 34rem) !important;
+}
+
+/* Compact left rail, inspired by the reference generator's section nav. */
+.dashboard-layout {
+  grid-template-columns: 108px minmax(0, 1fr) !important;
+}
+
+.sidebar {
+  width: 108px;
+  align-items: center;
+  padding: 22px 10px 15px;
+  border-right: 1px solid var(--visual-line);
+  background: rgba(255, 255, 255, .86);
+  box-shadow: 7px 0 26px rgba(64, 85, 117, .035);
+  backdrop-filter: blur(15px);
+}
+
+.sidebar .brand {
+  display: inline-flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0;
+  text-align: center;
+}
+
+.sidebar .brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 20px;
+  box-shadow: 0 8px 16px rgba(18, 100, 84, .14);
+}
+
+.sidebar .brand > span:last-child {
+  font-size: 10px;
+  letter-spacing: -.02em;
+}
+
+.sidebar-label {
+  margin: 28px 0 11px;
+  color: #9aa5b2;
+  font-size: 8px;
+  letter-spacing: .13em;
+  text-align: center;
+}
+
+.sidebar-nav {
+  width: 100%;
+  gap: 5px;
+}
+
+.sidebar-link {
+  min-height: 66px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 3px;
+  color: #7d8997;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 9px;
+  text-align: center;
+}
+
+.sidebar-link svg { width: 17px; height: 17px; }
+
+.sidebar-link:hover {
+  transform: none;
+  color: var(--accent);
+  border-color: #e0edf9;
+  background: #f5f9ff;
+}
+
+.sidebar-link-active {
+  color: var(--accent);
+  border-color: #d6e8f8;
+  background: #eaf5ff;
+  box-shadow: 0 5px 13px rgba(57, 122, 177, .08);
+}
+
+.sidebar-bottom {
+  width: 100%;
+}
+
+.sidebar-tip { display: none; }
+
+.user-menu {
+  justify-content: center;
+  padding: 11px 0 2px;
+  border-top: 1px solid var(--visual-line);
+}
+
+.user-menu-copy,
+.user-menu > svg { display: none; }
+
+.avatar-small {
+  width: 32px;
+  height: 32px;
+  font-size: 10px;
+  box-shadow: 0 5px 12px rgba(18, 100, 84, .14);
+}
+
+/* Shared workspace canvas and panels. */
+.dashboard-main {
+  width: auto !important;
+  max-width: none !important;
+  padding: 28px clamp(22px, 4vw, 64px) 72px;
+  background: transparent;
+}
+
+.dashboard-main::before {
+  top: -210px;
+  right: -155px;
+  opacity: .42;
+  border-color: rgba(142, 181, 225, .23);
+}
+
+.dashboard-main::after {
+  opacity: .2;
+  background-image: radial-gradient(#b6c9df .7px, transparent .7px);
+}
+
+.dashboard-header,
+.workspace-page-header {
+  padding: 27px 28px;
+  border: 1px solid var(--visual-line);
+  border-radius: 21px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: var(--visual-shadow-soft);
+}
+
+.dashboard-header h1,
+.workspace-page-heading h1 {
+  color: var(--visual-ink);
+  letter-spacing: -.02em !important;
+}
+
+.dashboard-header .eyebrow,
+.workspace-page-heading .eyebrow { color: #788fa8; }
+
+.button {
+  min-height: 41px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.button-primary {
+  background: linear-gradient(135deg, #1c7b69, #116050) !important;
+  box-shadow: 0 10px 20px rgba(18, 100, 84, .16);
+}
+
+.button-primary:hover {
+  background: linear-gradient(135deg, #176d5d, #0d5043) !important;
+  box-shadow: 0 13px 25px rgba(18, 100, 84, .22);
+}
+
+.button-ghost {
+  border-color: var(--visual-line);
+  background: #fff;
+}
+
+.dashboard-stats,
+.insight-metric-grid { gap: 15px; }
+
+.stat-card,
+.insight-metric,
+.insight-panel,
+.branding-panel,
+.branding-live-preview {
+  border-color: var(--visual-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: var(--visual-shadow-soft);
+}
+
+.stat-card:hover,
+.card-tile:hover,
+.template-card:hover,
+.signature-list-card:hover {
+  box-shadow: var(--visual-shadow);
+}
+
+.stat-card-accent,
+.insight-metric-accent {
+  background: linear-gradient(145deg, #1b705f, #0e4f44) !important;
+  box-shadow: 0 14px 28px rgba(18, 91, 73, .2);
+}
+
+.section-heading { margin-top: 42px; }
+.section-heading h2 { color: var(--visual-ink); }
+
+.search-wrap {
+  border: 1px solid var(--visual-line);
+  background: rgba(255, 255, 255, .85);
+  box-shadow: 0 5px 14px rgba(53, 76, 110, .04);
+}
+
+.card-grid,
+.template-grid { gap: 18px; }
+
+.card-tile,
+.template-card,
+.signature-list-card {
+  border-color: var(--visual-line);
+  border-radius: 18px;
+  box-shadow: var(--visual-shadow-soft);
+}
+
+.workspace-toolbar,
+.signature-page-toolbar {
+  border-color: var(--visual-line);
+  background: rgba(255, 255, 255, .74);
+  box-shadow: 0 5px 14px rgba(53, 76, 110, .035);
+}
+
+.workspace-filter-chip-active {
+  color: var(--accent);
+  border-color: #d4e8f8;
+  background: #eaf5ff;
+}
+
+/* Card builder: controls on the left, live preview on the right. */
+.builder-shell {
+  background: var(--visual-bg) !important;
+}
+
+.builder-header {
+  height: 70px;
+  padding: 0 24px;
+  border-bottom-color: var(--visual-line);
+  background: rgba(255, 255, 255, .93);
+  box-shadow: 0 5px 18px rgba(52, 75, 109, .05);
+}
+
+.builder-main {
+  grid-template-areas: 'editor preview';
+  grid-template-columns: minmax(430px, .92fr) minmax(450px, 1.08fr);
+  background: var(--visual-bg);
+}
+
+.editor-column {
+  grid-area: editor;
+  padding-right: clamp(28px, 4vw, 66px);
+  padding-left: clamp(28px, 4vw, 66px);
+  border-right: 1px solid var(--visual-line);
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 8px 0 27px rgba(52, 75, 109, .035);
+}
+
+.preview-column {
+  grid-area: preview;
+  border-right: 0;
+  border-left: 1px solid rgba(210, 223, 238, .92);
+  background: linear-gradient(155deg, #edf5fd 0%, #e7f0f9 100%) !important;
+}
+
+.preview-column::before {
+  border-color: rgba(121, 167, 214, .25);
+  box-shadow: 0 0 0 28px rgba(121, 167, 214, .045), 0 0 0 74px rgba(121, 167, 214, .025);
+}
+
+.preview-column::after {
+  opacity: .23;
+  background-image: radial-gradient(#9fbcd8 .7px, transparent .7px);
+}
+
+.builder-tabs {
+  border-bottom-color: #e7edf4;
+}
+
+.builder-tabs button.active {
+  color: var(--accent);
+}
+
+.builder-tabs button.active::after {
+  height: 3px;
+  border-radius: 4px 4px 0 0;
+}
+
+.active-fields-section,
+.field-category,
+.design-block {
+  border-color: var(--visual-line);
+}
+
+.active-fields-section {
+  background: linear-gradient(180deg, #fcfdff, #f7faff);
+  box-shadow: var(--visual-shadow-soft);
+}
+
+.field-category { background: #fff; }
+
+.active-field,
+.field-option-direct {
+  border-color: #e2e8f0;
+  background: #fbfdff;
+}
+
+.active-field:hover,
+.field-option-direct:hover {
+  border-color: #c5dcef;
+  box-shadow: 0 7px 16px rgba(54, 100, 143, .07);
+}
+
+.add-field-button,
+.field-option-state {
+  color: var(--accent);
+  border-color: #d3e8f8;
+  background: #edf7ff;
+}
+
+.phone-shell {
+  box-shadow: 19px 28px 56px rgba(48, 76, 109, .22), 0 0 0 1px rgba(255, 255, 255, .42) inset;
+}
+
+/* Email signature list and editor: the hero workflow of the new UI. */
+.signature-page-main {
+  padding-bottom: 72px;
+}
+
+.signature-page-toolbar {
+  border-radius: 14px;
+}
+
+.signature-empty-state {
+  border-color: #cbdceb;
+  border-radius: 20px;
+  background: radial-gradient(circle at 50% 0%, #eef6ff, #fff 58%);
+}
+
+.signature-editor-workspace {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--visual-bg);
+}
+
+.signature-editor-workspace > .sidebar {
+  min-height: 100vh;
+}
+
+.signature-editor-page {
+  min-width: 0;
+  background: var(--visual-bg);
+}
+
+.signature-editor-header {
+  padding: 16px clamp(20px, 4vw, 48px);
+  border-bottom-color: var(--visual-line);
+  background: rgba(255, 255, 255, .93);
+  box-shadow: 0 6px 18px rgba(52, 75, 109, .05);
+}
+
+.signature-editor-title .icon-button {
+  border-color: var(--visual-line);
+}
+
+.signature-name-input {
+  letter-spacing: -.02em;
+}
+
+.signature-editor-layout {
+  grid-template-columns: minmax(420px, .9fr) minmax(500px, 1.1fr);
+  gap: 24px;
+  max-width: 1500px;
+  padding: 28px clamp(20px, 4vw, 48px) 76px;
+}
+
+.signature-controls {
+  gap: 13px;
+}
+
+.signature-control-section,
+.signature-setup-help {
+  padding: 20px;
+  border-color: var(--visual-line);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: var(--visual-shadow-soft);
+}
+
+.signature-control-section:hover,
+.signature-setup-help:hover {
+  border-color: #d4e3f0;
+}
+
+.signature-section-heading h2,
+.signature-preview-heading h2,
+.signature-copy-panel h2,
+.signature-setup-help h2 {
+  letter-spacing: -.02em !important;
+}
+
+.signature-template-option {
+  border-color: #e0e7ef;
+  background: #fbfdff;
+}
+
+.signature-template-option:hover {
+  border-color: #bcd9ef;
+  background: #f3f9ff;
+}
+
+.signature-template-option-active {
+  border-color: #79add3;
+  background: #edf7ff;
+  box-shadow: 0 0 0 2px rgba(121, 173, 211, .14);
+}
+
+.signature-form-input,
+.signature-select-label select,
+.signature-select-label input,
+.signature-asset-input input,
+.signature-social-field input,
+.signature-import-row select {
+  border-color: #dbe4ed;
+  background: #fbfdff;
+}
+
+.signature-form-input:focus,
+.signature-social-field input:focus,
+.signature-asset-input input:focus,
+.signature-select-label input:focus,
+.signature-select-label select:focus,
+.signature-import-row select:focus {
+  border-color: #75aad1;
+  box-shadow: 0 0 0 3px rgba(117, 170, 209, .14);
+}
+
+.signature-preview-column {
+  top: 98px;
+}
+
+.signature-preview-shell {
+  border-color: #d8e2ed;
+  border-radius: 20px;
+  box-shadow: 0 18px 42px rgba(45, 73, 111, .11);
+}
+
+.signature-preview-toolbar {
+  background: #fbfdff;
+}
+
+.signature-copy-panel {
+  border-color: #bfdae9;
+  background: linear-gradient(135deg, #e9f5ff, #f8fcff);
+}
+
+.signature-preview-note {
+  border-color: #d4e4ef;
+  background: #f2f9ff;
+}
+
+/* Branding and template/insight content inherit the same calmer system. */
+.branding-live-preview {
+  background: rgba(255, 255, 255, .88);
+}
+
+.branding-preview-card {
+  border-color: #d8e4ef;
+}
+
+.workspace-empty {
+  border-color: #cbdceb;
+  background: rgba(255, 255, 255, .6);
+}
+
+@media (max-width: 1100px) {
+  .dashboard-layout,
+  .signature-editor-workspace { grid-template-columns: 96px minmax(0, 1fr) !important; }
+  .builder-main { grid-template-columns: minmax(380px, .9fr) minmax(420px, 1.1fr); }
+  .signature-editor-layout { grid-template-columns: minmax(360px, .9fr) minmax(420px, 1.1fr); }
+}
+
+@media (max-width: 840px) {
+  .dashboard-layout,
+  .signature-editor-workspace { display: block; }
+  .sidebar,
+  .signature-editor-workspace > .sidebar {
+    position: fixed;
+    z-index: 25;
+    top: 0;
+    bottom: 0;
+    left: -230px;
+    width: 230px;
+    align-items: stretch;
+    padding: 31px 18px 18px;
+  }
+  .sidebar .brand,
+  .signature-editor-workspace > .sidebar .brand {
+    width: auto;
+    flex-direction: row;
+    gap: 9px;
+    padding: 0 12px;
+    text-align: left;
+  }
+  .sidebar .brand-mark,
+  .signature-editor-workspace > .sidebar .brand-mark { width: 29px; height: 29px; border-radius: 10px; }
+  .sidebar .brand > span:last-child { font-size: 20px; }
+  .sidebar-label { margin: 57px 12px 13px; text-align: left; }
+  .sidebar-link { min-height: 43px; flex-direction: row; justify-content: flex-start; gap: 11px; padding: 10px 13px; border-radius: 12px; font-size: 12px; text-align: left; }
+  .sidebar-tip { display: flex; }
+  .user-menu { justify-content: flex-start; padding: 10px 8px; }
+  .user-menu-copy { display: flex; }
+  .user-menu > svg { display: block; }
+
+  .dashboard-main { padding: 22px 25px 112px; }
+  .builder-main { display: block; }
+  .editor-column,
+  .preview-column { grid-area: auto; }
+  .editor-column { border-right: 0; box-shadow: none; }
+  .preview-column { border-left: 0; }
+  .signature-editor-layout { grid-template-columns: 1fr; padding-bottom: 112px; }
+  .signature-preview-column { position: static; order: -1; }
+  .signature-preview-shell { max-width: 720px; }
+}
+
+@media (max-width: 600px) {
+  .dashboard-main { padding: 20px 15px 112px; }
+  .dashboard-header,
+  .workspace-page-header { padding: 22px; border-radius: 18px; }
+  .dashboard-header h1 { font-size: 31px; }
+  .section-heading { margin-top: 36px; }
+  .builder-header { height: 59px; padding: 0 14px; }
+  .builder-main { min-height: calc(100vh - 107px); }
+  .editor-column { padding: 0 15px 40px; }
+  .preview-column { padding: 25px 15px 28px; }
+  .signature-editor-header { padding: 14px; }
+  .signature-editor-layout { padding: 18px 13px 112px; }
+  .signature-control-section,
+  .signature-setup-help { padding: 16px; border-radius: 14px; }
+  .signature-preview-heading h2 { font-size: 17px; }
+}
