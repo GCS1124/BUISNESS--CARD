@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { CardBundle, CardField } from './types'
+import type { CardBundle, CardField, EmailSignature } from './types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
@@ -114,6 +114,61 @@ export async function persistRemoteBundle(bundle: CardBundle) {
 export async function deleteRemoteBundle(cardId: string) {
   if (!supabase) return
   const { error } = await supabase.from('cards').delete().eq('id', cardId)
+  if (error) throw error
+}
+
+const toSignatureRow = (signature: EmailSignature) => ({
+  id: signature.id,
+  user_id: signature.userId,
+  name: signature.name,
+  template_id: signature.templateId,
+  contact_details: signature.contactDetails,
+  visible_fields: signature.visibleFields,
+  social_links: signature.socialLinks,
+  branding: signature.branding,
+  cta_settings: signature.ctaSettings,
+  profile_image_url: signature.profileImageUrl || null,
+  company_logo_url: signature.companyLogoUrl || null,
+  linked_business_card_id: signature.linkedBusinessCardId || null,
+  is_active: signature.isActive,
+  created_at: signature.createdAt,
+  updated_at: signature.updatedAt,
+})
+
+const fromSignatureRow = (row: Record<string, any>): EmailSignature => ({
+  id: String(row.id),
+  userId: String(row.user_id),
+  name: String(row.name ?? 'Untitled signature'),
+  templateId: String(row.template_id ?? 'minimal'),
+  contactDetails: (row.contact_details ?? {}) as EmailSignature['contactDetails'],
+  visibleFields: (row.visible_fields ?? {}) as EmailSignature['visibleFields'],
+  socialLinks: (row.social_links ?? {}) as EmailSignature['socialLinks'],
+  branding: (row.branding ?? {}) as EmailSignature['branding'],
+  ctaSettings: (row.cta_settings ?? {}) as EmailSignature['ctaSettings'],
+  profileImageUrl: String(row.profile_image_url ?? ''),
+  companyLogoUrl: String(row.company_logo_url ?? ''),
+  linkedBusinessCardId: String(row.linked_business_card_id ?? ''),
+  isActive: Boolean(row.is_active ?? true),
+  createdAt: String(row.created_at ?? new Date().toISOString()),
+  updatedAt: String(row.updated_at ?? new Date().toISOString()),
+})
+
+export async function loadRemoteSignatures(userId: string): Promise<EmailSignature[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase.from('email_signatures').select('*').eq('user_id', userId).order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row) => fromSignatureRow(row))
+}
+
+export async function persistRemoteSignature(signature: EmailSignature) {
+  if (!supabase) return
+  const { error } = await supabase.from('email_signatures').upsert(toSignatureRow(signature))
+  if (error) throw error
+}
+
+export async function deleteRemoteSignature(signatureId: string) {
+  if (!supabase) return
+  const { error } = await supabase.from('email_signatures').delete().eq('id', signatureId)
   if (error) throw error
 }
 

@@ -99,3 +99,73 @@ export interface FieldDefinition {
   iconKey: string
   multiple?: boolean
 }
+
+export type SignatureFieldKey = 'fullName' | 'jobTitle' | 'department' | 'companyName' | 'phoneNumber' | 'mobileNumber' | 'email' | 'website' | 'officeAddress'
+
+export interface SignatureContactDetails {
+  fullName: string
+  jobTitle: string
+  department: string
+  companyName: string
+  phoneNumber: string
+  mobileNumber: string
+  email: string
+  website: string
+  officeAddress: string
+}
+
+export interface SignatureSocialLinks {
+  linkedin: string
+  facebook: string
+  instagram: string
+  twitter: string
+  youtube: string
+  github: string
+  whatsapp: string
+}
+
+export type SignatureIconStyle = 'text' | 'filled' | 'outline'
+export type SignatureButtonStyle = 'solid' | 'soft' | 'outline'
+export type SignatureAlignment = 'left' | 'center'
+
+export interface SignatureBranding {
+  primaryColor: string
+  accentColor: string
+  textColor: string
+  fontFamily: string
+  fontSize: number
+  logoSize: number
+  photoSize: number
+  spacing: number
+  showDivider: boolean
+  iconStyle: SignatureIconStyle
+  buttonStyle: SignatureButtonStyle
+  alignment: SignatureAlignment
+}
+
+export type SignatureCtaType = 'save_contact' | 'visit_website' | 'book_meeting' | 'business_card'
+
+export interface SignatureCtaSettings {
+  enabled: boolean
+  type: SignatureCtaType
+  label: string
+  url: string
+}
+
+export interface EmailSignature {
+  id: string
+  userId: string
+  name: string
+  templateId: string
+  contactDetails: SignatureContactDetails
+  visibleFields: Partial<Record<SignatureFieldKey, boolean>>
+  socialLinks: SignatureSocialLinks
+  branding: SignatureBranding
+  ctaSettings: SignatureCtaSettings
+  profileImageUrl: string
+  companyLogoUrl: string
+  linkedBusinessCardId: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}

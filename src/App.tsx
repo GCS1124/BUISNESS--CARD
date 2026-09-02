@@ -22,6 +22,7 @@ import {
   LayoutTemplate,
   Link2,
   LogOut,
+  Mail,
   Menu,
   MoreHorizontal,
   PanelLeft,
@@ -42,16 +43,19 @@ import {
 import QRCode from 'qrcode'
 import { AuthScreen } from './components/AuthScreen'
 import { DirectFieldEditor, InlineFieldEditor } from './components/FieldEditor'
+import { EmailSignaturesPage } from './components/EmailSignaturesPage'
 import { IconBadge } from './components/IconBadge'
 import { PhonePreview } from './components/PhonePreview'
 import { categoryOrder, definitionFor, fieldDefinitions } from './lib/fieldDefinitions'
 import { createSeedBundle, defaultDesign, defaultUser, makeId, readLocalBundles, readLocalUser, slugify, writeLocalBundles, writeLocalUser } from './lib/storage'
-import { deleteRemoteBundle, isSupabaseConfigured, loadPublicBundle, loadRemoteBundles, persistRemoteBundle, remoteCardUrl, supabase, uploadCardAsset } from './lib/supabase'
+import { readLocalSignatures, writeLocalSignatures } from './lib/signatureStorage'
+import { createDefaultSignature, duplicateSignature, normalizeSignature } from './lib/signatures'
+import { deleteRemoteBundle, deleteRemoteSignature, isSupabaseConfigured, loadPublicBundle, loadRemoteBundles, loadRemoteSignatures, persistRemoteBundle, persistRemoteSignature, remoteCardUrl, supabase, uploadCardAsset } from './lib/supabase'
 import { cardTemplates } from './lib/templateCatalog'
 import type { CardTemplate } from './lib/templateCatalog'
-import type { AppUser, Card, CardBundle, CardField, DesignSettings, FieldCategory, FieldDefinition, FieldType } from './lib/types'
+import type { AppUser, Card, CardBundle, CardField, DesignSettings, EmailSignature, FieldCategory, FieldDefinition, FieldType } from './lib/types'
 
-type AppRoute = 'dashboard' | 'builder' | 'public' | 'reset' | 'overview' | 'templates' | 'insights'
+type AppRoute = 'dashboard' | 'builder' | 'public' | 'reset' | 'overview' | 'templates' | 'insights' | 'email-signatures'
 type SaveState = 'saved' | 'saving' | 'error'
 type CardUpdate = Omit<Partial<Card>, 'design'> & { design?: Partial<DesignSettings> }
 
@@ -73,6 +77,7 @@ const routeFromLocation = (): { route: AppRoute; id?: string } => {
   if (path.startsWith('/overview')) return { route: 'overview' }
   if (path.startsWith('/templates')) return { route: 'templates' }
   if (path.startsWith('/insights')) return { route: 'insights' }
+  if (path.startsWith('/email-signatures')) return { route: 'email-signatures' }
   return { route: 'overview' }
 }
 
@@ -82,12 +87,16 @@ export default function App() {
   const [routeId, setRouteId] = useState(initialRoute.id)
   const [user, setUser] = useState<AppUser | null>(null)
   const [bundles, setBundles] = useState<CardBundle[]>([])
+  const [signatures, setSignatures] = useState<EmailSignature[]>([])
   const [sessionReady, setSessionReady] = useState(false)
   const [remotePublicBundle, setRemotePublicBundle] = useState<CardBundle | undefined>()
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [saveError, setSaveError] = useState('')
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
+  const signatureSaveTimer = useRef<number | undefined>(undefined)
+  const [signatureSaveState, setSignatureSaveState] = useState<SaveState>('saved')
+  const [signatureSaveError, setSignatureSaveError] = useState('')
   const canPersistRemote = Boolean(isSupabaseConfigured && supabase && user && user.id !== defaultUser.id)
 
   const showToast = (message: string, tone: 'success' | 'error' = 'success') => {
@@ -103,6 +112,7 @@ export default function App() {
         if (!active) return
         setUser(localUser)
         setBundles(readLocalBundles())
+        setSignatures(readLocalSignatures().map((signature) => normalizeSignature(signature)))
         setSessionReady(true)
         return
       }
@@ -121,6 +131,12 @@ export default function App() {
       try {
         const remoteBundles = await loadRemoteBundles(remoteUser.id)
         if (active) setBundles(remoteBundles)
+        try {
+          const remoteSignatures = await loadRemoteSignatures(remoteUser.id)
+          if (active) setSignatures(remoteSignatures.map((signature) => normalizeSignature(signature)))
+        } catch {
+          if (active) setSignatures([])
+        }
       } catch (error) {
         if (active) showToast(error instanceof Error ? error.message : 'Could not load your cards.', 'error')
       } finally {
@@ -139,11 +155,12 @@ export default function App() {
       active = false
       authListener?.data.subscription.unsubscribe()
       if (saveTimer.current) window.clearTimeout(saveTimer.current)
+      if (signatureSaveTimer.current) window.clearTimeout(signatureSaveTimer.current)
     }
   }, [])
 
   const navigate = (nextRoute: AppRoute, id?: string) => {
-    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : `/${nextRoute}`
+    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : nextRoute === 'email-signatures' ? '/email-signatures' : `/${nextRoute}`
     window.history.pushState({}, '', path)
     setRoute(nextRoute)
     setRouteId(id)
@@ -235,9 +252,71 @@ export default function App() {
     if (route === 'builder') navigate('dashboard')
   }
 
+  const persistSignatureImmediately = (signature: EmailSignature) => {
+    setSignatureSaveState('saving')
+    setSignatureSaveError('')
+    void persistRemoteSignature(signature).then(() => setSignatureSaveState('saved')).catch((error) => {
+      const message = error instanceof Error ? error.message : 'Unable to save this signature.'
+      setSignatureSaveState('error')
+      setSignatureSaveError(message)
+      showToast('Could not save the email signature. Please try again.', 'error')
+    })
+  }
+
+  const updateSignature = (nextSignature: EmailSignature) => {
+    const withTimestamp = normalizeSignature({ ...nextSignature, updatedAt: new Date().toISOString() })
+    setSignatures((current) => {
+      const next = current.some((signature) => signature.id === withTimestamp.id) ? current.map((signature) => signature.id === withTimestamp.id ? withTimestamp : signature) : [...current, withTimestamp]
+      writeLocalSignatures(next)
+      return next
+    })
+    if (canPersistRemote) {
+      setSignatureSaveState('saving')
+      setSignatureSaveError('')
+      if (signatureSaveTimer.current) window.clearTimeout(signatureSaveTimer.current)
+      signatureSaveTimer.current = window.setTimeout(() => persistSignatureImmediately(withTimestamp), 700)
+    } else setSignatureSaveState('saved')
+  }
+
+  const createSignature = () => {
+    const nextSignature = createDefaultSignature(user ?? defaultUser)
+    setSignatures((current) => {
+      const next = [...current, nextSignature]
+      writeLocalSignatures(next)
+      return next
+    })
+    if (canPersistRemote) persistSignatureImmediately(nextSignature)
+    return nextSignature
+  }
+
+  const duplicateExistingSignature = (source: EmailSignature) => {
+    const nextSignature = duplicateSignature(source)
+    setSignatures((current) => {
+      const next = [...current, nextSignature]
+      writeLocalSignatures(next)
+      return next
+    })
+    if (canPersistRemote) persistSignatureImmediately(nextSignature)
+    showToast('Signature duplicated')
+    return nextSignature
+  }
+
+  const deleteSignature = async (signatureId: string) => {
+    setSignatures((current) => {
+      const next = current.filter((signature) => signature.id !== signatureId)
+      writeLocalSignatures(next)
+      return next
+    })
+    if (canPersistRemote) {
+      try { await deleteRemoteSignature(signatureId) } catch { showToast('The signature was removed locally, but could not be removed remotely.', 'error') }
+    }
+    showToast('Signature deleted')
+  }
+
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut()
     setUser(isSupabaseConfigured ? null : defaultUser)
+    if (isSupabaseConfigured) setSignatures([])
     if (isSupabaseConfigured) navigate('dashboard')
   }
 
@@ -248,12 +327,13 @@ export default function App() {
   if (route === 'public') return <PublicCard bundle={publicBundle} onBack={() => navigate('dashboard')} onToast={showToast} />
   if (route === 'reset') return <ResetPasswordScreen onComplete={() => navigate('dashboard')} />
   if (route === 'overview') return <LandingPage bundle={bundles[0]} onCreate={() => user ? createCard() : navigate('dashboard')} onLogin={() => navigate('dashboard')} onOpenBuilder={() => activeBundle ? navigate('builder', activeBundle.card.id) : user ? createCard() : navigate('dashboard')} />
-  if (!user) return <AuthScreen onDemo={() => { setUser(defaultUser); setBundles(readLocalBundles()); setSessionReady(true) }} onAuthenticated={(nextUser) => { setUser(nextUser); setSessionReady(true); void loadRemoteBundles(nextUser.id).then(setBundles).catch(() => setBundles([])) }} />
+  if (!user) return <AuthScreen onDemo={() => { setUser(defaultUser); setBundles(readLocalBundles()); setSignatures(readLocalSignatures().map((signature) => normalizeSignature(signature))); setSessionReady(true) }} onAuthenticated={(nextUser) => { setUser(nextUser); setSessionReady(true); void loadRemoteBundles(nextUser.id).then(setBundles).catch(() => setBundles([])); void loadRemoteSignatures(nextUser.id).then((nextSignatures) => setSignatures(nextSignatures.map((signature) => normalizeSignature(signature)))).catch(() => setSignatures([])) }} />
 
   return <div className="app-shell">
-    {route === 'dashboard' && <Dashboard user={user} bundles={bundles} onCreate={createCard} onCards={() => navigate('dashboard')} onEdit={(id) => navigate('builder', id)} onDelete={deleteCard} onOpenPublic={(slug) => navigate('public', slug)} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignOut={signOut} />}
-    {route === 'templates' && <TemplatesPage user={user} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onInsights={() => navigate('insights')} onCreate={createCard} onUseTemplate={createCardFromTemplate} onSignOut={signOut} />}
-    {route === 'insights' && <InsightsPage user={user} bundles={bundles} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onCreate={createCard} onEdit={(id) => navigate('builder', id)} onSignOut={signOut} />}
+    {route === 'dashboard' && <Dashboard user={user} bundles={bundles} onCreate={createCard} onCards={() => navigate('dashboard')} onEdit={(id) => navigate('builder', id)} onDelete={deleteCard} onOpenPublic={(slug) => navigate('public', slug)} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => navigate('email-signatures')} onSignOut={signOut} />}
+    {route === 'templates' && <TemplatesPage user={user} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onInsights={() => navigate('insights')} onSignatures={() => navigate('email-signatures')} onCreate={createCard} onUseTemplate={createCardFromTemplate} onSignOut={signOut} />}
+    {route === 'insights' && <InsightsPage user={user} bundles={bundles} onCards={() => navigate('dashboard')} onOverview={() => navigate('overview')} onTemplates={() => navigate('templates')} onSignatures={() => navigate('email-signatures')} onCreate={createCard} onEdit={(id) => navigate('builder', id)} onSignOut={signOut} />}
+    {route === 'email-signatures' && <EmailSignaturesPage user={user} bundles={bundles} signatures={signatures} saveState={signatureSaveState} saveError={signatureSaveError} onCreate={createSignature} onUpdate={updateSignature} onDuplicate={duplicateExistingSignature} onDelete={deleteSignature} onCards={() => navigate('dashboard')} onTemplates={() => navigate('templates')} onInsights={() => navigate('insights')} onSignatures={() => undefined} onSignOut={signOut} onToast={showToast} />}
     {route === 'builder' && (activeBundle ? <Builder bundle={activeBundle} user={user} saveState={saveState} saveError={saveError} onBack={() => navigate('dashboard')} onUpdate={updateBundle} onToast={showToast} onOpenPublic={(slug) => navigate('public', slug)} /> : <EmptyRoute onCreate={createCard} onBack={() => navigate('dashboard')} />)}
     {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
   </div>
@@ -274,20 +354,21 @@ interface DashboardProps {
   onOverview: () => void
   onTemplates: () => void
   onInsights: () => void
+  onSignatures: () => void
   onSignOut: () => void
 }
 
-type WorkspaceSection = 'cards' | 'templates' | 'insights'
+type WorkspaceSection = 'cards' | 'templates' | 'insights' | 'signatures'
 
-function WorkspaceSidebar({ active, user, onCards, onOverview, onTemplates, onInsights, onSignOut }: { active: WorkspaceSection; user: AppUser; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignOut: () => void }) {
-  return <aside className="sidebar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={17} /> Templates</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={17} /> Insights</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Add a cover image and a personal link to stand out.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div></aside>
+function WorkspaceSidebar({ active, user, onCards, onOverview, onTemplates, onInsights, onSignatures, onSignOut }: { active: WorkspaceSection; user: AppUser; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onSignOut: () => void }) {
+  return <aside className="sidebar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={17} /> Templates</button><button className={`sidebar-link ${active === 'signatures' ? 'sidebar-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={17} /> Email signatures</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={17} /> Insights</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Add a cover image and a personal link to stand out.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div></aside>
 }
 
-function MobileWorkspaceNav({ active, onCards, onOverview, onTemplates, onInsights, onCreate }: { active: WorkspaceSection; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onCreate: () => void }) {
-  return <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={16} /><span>Insights</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
+function MobileWorkspaceNav({ active, onCards, onOverview, onTemplates, onInsights, onSignatures, onCreate }: { active: WorkspaceSection; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onCreate: () => void }) {
+  return <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'signatures' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={16} /><span>Signatures</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={16} /><span>Insights</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
 }
 
-function Dashboard({ user, bundles, onCreate, onCards, onEdit, onDelete, onOpenPublic, onOverview, onTemplates, onInsights, onSignOut }: DashboardProps) {
+function Dashboard({ user, bundles, onCreate, onCards, onEdit, onDelete, onOpenPublic, onOverview, onTemplates, onInsights, onSignatures, onSignOut }: DashboardProps) {
   const [search, setSearch] = useState('')
   const [menuId, setMenuId] = useState('')
   const [confirmId, setConfirmId] = useState('')
@@ -295,7 +376,7 @@ function Dashboard({ user, bundles, onCreate, onCards, onEdit, onDelete, onOpenP
   const publishedCount = bundles.filter((bundle) => bundle.card.isPublished).length
   const dateLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
   return <div className="dashboard-layout">
-    <WorkspaceSidebar active="cards" user={user} onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={onInsights} onSignOut={onSignOut} />
+    <WorkspaceSidebar active="cards" user={user} onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onSignOut={onSignOut} />
     <main className="dashboard-main">
       <div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="mobile-workspace-actions"><button className="mobile-create-button" onClick={onCreate} aria-label="Create new card"><Plus size={16} /></button></div></div>
       <header className="dashboard-header"><div><p className="eyebrow">{dateLabel}</p><h1>Good morning, {user.name.split(' ')[0]}.</h1></div><button className="button button-primary" onClick={onCreate}><Plus size={17} /> Create new card</button></header>
@@ -305,7 +386,7 @@ function Dashboard({ user, bundles, onCreate, onCards, onEdit, onDelete, onOpenP
       {filtered.length === 0 && bundles.length > 0 && <div className="no-results">No cards match “{search}”.</div>}
       {confirmId && <ConfirmDialog title="Delete this card?" description="This removes the card and its fields. This action cannot be undone." confirmLabel="Delete card" onCancel={() => setConfirmId('')} onConfirm={() => { onDelete(confirmId); setConfirmId('') }} />}
     </main>
-    <MobileWorkspaceNav active="cards" onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={onInsights} onCreate={onCreate} />
+    <MobileWorkspaceNav active="cards" onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onCreate={onCreate} />
   </div>
 }
 
@@ -329,12 +410,12 @@ function WorkspaceSpotlight({ bundle, onEdit, onOpenPublic }: { bundle: CardBund
   return <aside className="workspace-spotlight"><div className="spotlight-header"><div><p className="eyebrow">Card health</p><h3>{completion === 100 ? 'Ready to be remembered' : 'A few details to go'}</h3></div><span className="spotlight-status"><span className="spotlight-status-dot" />{completion === 100 ? 'All set' : 'On track'}</span></div><div className="spotlight-score"><div><strong>{completion}%</strong><span>share-ready</span></div><div className="spotlight-progress"><span style={{ width: `${completion}%` }} /></div></div><div className="spotlight-checklist">{checklist.map((item) => <div className={item.done ? 'spotlight-check spotlight-check-done' : 'spotlight-check'} key={item.label}><span>{item.done ? <Check size={12} /> : <span />}</span><p>{item.label}</p><small>{item.done ? 'Complete' : 'Next step'}</small></div>)}</div><div className="spotlight-actions"><button className="button button-primary" onClick={bundle.card.isPublished ? onOpenPublic : onEdit}>{bundle.card.isPublished ? 'View live card' : 'Finish card'} <ArrowUpRight size={14} /></button><button className="spotlight-secondary" onClick={onEdit}><Palette size={14} /> Customize</button></div></aside>
 }
 
-function TemplatesPage({ user, onCards, onOverview, onInsights, onCreate, onUseTemplate, onSignOut }: { user: AppUser; onCards: () => void; onOverview: () => void; onInsights: () => void; onCreate: () => void; onUseTemplate: (template: CardTemplate) => void; onSignOut: () => void }) {
+function TemplatesPage({ user, onCards, onOverview, onInsights, onSignatures, onCreate, onUseTemplate, onSignOut }: { user: AppUser; onCards: () => void; onOverview: () => void; onInsights: () => void; onSignatures: () => void; onCreate: () => void; onUseTemplate: (template: CardTemplate) => void; onSignOut: () => void }) {
   const [category, setCategory] = useState('All')
   const [search, setSearch] = useState('')
   const categories = ['All', ...Array.from(new Set(cardTemplates.map((template) => template.category)))]
   const filtered = cardTemplates.filter((template) => (category === 'All' || template.category === category) && `${template.name} ${template.category} ${template.description} ${template.useCase}`.toLowerCase().includes(search.toLowerCase()))
-  return <div className="dashboard-layout"><WorkspaceSidebar active="templates" user={user} onCards={onCards} onOverview={onOverview} onTemplates={() => undefined} onInsights={onInsights} onSignOut={onSignOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-overview-link" onClick={onCards}><ArrowLeft size={14} /> Cards</button></div><header className="workspace-page-header"><div className="workspace-page-heading"><div className="template-heading-kicker"><p className="eyebrow">Template library</p><span className="template-count-pill">{cardTemplates.length} curated designs</span></div><h1>Start with a point of view.</h1><p>Choose a visual starting point, then make it yours in the builder. Every template has its own generated artwork, palette, and starter content.</p></div><button className="button button-ghost" onClick={onCreate}><Plus size={16} /> Start blank</button></header><div className="workspace-toolbar"><div className="workspace-filter-chips" role="tablist" aria-label="Template categories">{categories.map((item) => <button className={category === item ? 'workspace-filter-chip workspace-filter-chip-active' : 'workspace-filter-chip'} key={item} onClick={() => setCategory(item)} role="tab" aria-selected={category === item}>{item}</button>)}</div><div className="search-wrap workspace-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${cardTemplates.length} templates`} aria-label="Search templates" /></div></div><div className="template-results-meta"><span>{filtered.length} {filtered.length === 1 ? 'template' : 'templates'}</span><span>Curated visual library · click any card to use it</span></div>{filtered.length ? <div className="template-grid">{filtered.map((template) => <TemplateCard key={template.id} template={template} onUse={() => onUseTemplate(template)} />)}</div> : <div className="workspace-empty"><div className="workspace-empty-icon"><Search size={20} /></div><h2>No templates found</h2><p>Try a different category or search term.</p><button className="button button-ghost" onClick={() => { setCategory('All'); setSearch('') }}>Clear filters</button></div>}</main><MobileWorkspaceNav active="templates" onCards={onCards} onOverview={onOverview} onTemplates={() => undefined} onInsights={onInsights} onCreate={onCreate} /></div>
+  return <div className="dashboard-layout"><WorkspaceSidebar active="templates" user={user} onCards={onCards} onOverview={onOverview} onTemplates={() => undefined} onInsights={onInsights} onSignatures={onSignatures} onSignOut={onSignOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-overview-link" onClick={onCards}><ArrowLeft size={14} /> Cards</button></div><header className="workspace-page-header"><div className="workspace-page-heading"><div className="template-heading-kicker"><p className="eyebrow">Template library</p><span className="template-count-pill">{cardTemplates.length} curated designs</span></div><h1>Start with a point of view.</h1><p>Choose a visual starting point, then make it yours in the builder. Every template has its own generated artwork, palette, and starter content.</p></div><button className="button button-ghost" onClick={onCreate}><Plus size={16} /> Start blank</button></header><div className="workspace-toolbar"><div className="workspace-filter-chips" role="tablist" aria-label="Template categories">{categories.map((item) => <button className={category === item ? 'workspace-filter-chip workspace-filter-chip-active' : 'workspace-filter-chip'} key={item} onClick={() => setCategory(item)} role="tab" aria-selected={category === item}>{item}</button>)}</div><div className="search-wrap workspace-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${cardTemplates.length} templates`} aria-label="Search templates" /></div></div><div className="template-results-meta"><span>{filtered.length} {filtered.length === 1 ? 'template' : 'templates'}</span><span>Curated visual library · click any card to use it</span></div>{filtered.length ? <div className="template-grid">{filtered.map((template) => <TemplateCard key={template.id} template={template} onUse={() => onUseTemplate(template)} />)}</div> : <div className="workspace-empty"><div className="workspace-empty-icon"><Search size={20} /></div><h2>No templates found</h2><p>Try a different category or search term.</p><button className="button button-ghost" onClick={() => { setCategory('All'); setSearch('') }}>Clear filters</button></div>}</main><MobileWorkspaceNav active="templates" onCards={onCards} onOverview={onOverview} onTemplates={() => undefined} onInsights={onInsights} onSignatures={onSignatures} onCreate={onCreate} /></div>
 }
 
 function TemplateCard({ template, onUse }: { template: CardTemplate; onUse: () => void }) {
@@ -342,11 +423,11 @@ function TemplateCard({ template, onUse }: { template: CardTemplate; onUse: () =
   return <article className={`template-card ${template.featured ? 'template-card-featured' : ''}`}><div className="template-card-preview" style={{ backgroundColor: template.design.headerColor || '#cde7e0' }}><img className="template-card-art" src={template.imageUrl} alt={template.imageAlt} loading="lazy" /><div className="template-card-art-wash" /><div className="template-card-preview-top"><span>{template.featured ? 'Recommended' : template.category}</span><span className="template-card-dots">•••</span></div><div className="template-mini-card" style={{ background: template.design.cardBackground || '#fff', color: template.design.textColor || '#14221f' }}><div className="template-mini-avatar" style={{ background: template.design.accentColor || '#165c51' }}>{initials(name)}</div><div><strong>{name}</strong><span style={{ color: template.design.accentColor || '#165c51' }}>{template.role}</span><i style={{ background: template.design.accentColor || '#165c51' }} /></div></div></div><div className="template-card-content"><div><div className="template-card-meta"><p className="eyebrow">{template.name}</p><span>{template.category}</span></div><h2>{template.description}</h2><p>{template.useCase}</p></div><button className="template-use-button" onClick={onUse}>Use template <ArrowRight size={15} /></button></div></article>
 }
 
-function InsightsPage({ user, bundles, onCards, onOverview, onTemplates, onCreate, onEdit, onSignOut }: { user: AppUser; bundles: CardBundle[]; onCards: () => void; onOverview: () => void; onTemplates: () => void; onCreate: () => void; onEdit: (id: string) => void; onSignOut: () => void }) {
+function InsightsPage({ user, bundles, onCards, onOverview, onTemplates, onSignatures, onCreate, onEdit, onSignOut }: { user: AppUser; bundles: CardBundle[]; onCards: () => void; onOverview: () => void; onTemplates: () => void; onSignatures: () => void; onCreate: () => void; onEdit: (id: string) => void; onSignOut: () => void }) {
   const totalFields = bundles.reduce((total, bundle) => total + bundle.fields.filter((field) => field.value.trim()).length, 0)
   const averageReadiness = bundles.length ? Math.round(bundles.reduce((total, bundle) => total + getCardReadiness(bundle), 0) / bundles.length) : 0
   const connectedCards = bundles.filter((bundle) => bundle.fields.some((field) => ['phone', 'email', 'whatsapp'].includes(field.fieldType) && field.value.trim())).length
-  return <div className="dashboard-layout"><WorkspaceSidebar active="insights" user={user} onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={() => undefined} onSignOut={onSignOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-overview-link" onClick={onCards}><ArrowLeft size={14} /> Cards</button></div><header className="workspace-page-header"><div className="workspace-page-heading"><p className="eyebrow">Profile insights</p><h1>Make every share count.</h1><p>A clear read on the details that make your digital introduction feel complete.</p></div><button className="button button-primary" onClick={onCreate}><Plus size={16} /> Add a card</button></header><div className="insight-metric-grid"><InsightMetric label="Share readiness" value={`${averageReadiness}%`} helper="Average across your cards" icon={<TrendingUp size={18} />} accent /><InsightMetric label="Published cards" value={String(bundles.filter((bundle) => bundle.card.isPublished).length).padStart(2, '0')} helper="Ready for real introductions" icon={<Eye size={18} />} /><InsightMetric label="Details added" value={String(totalFields).padStart(2, '0')} helper="Fields powering your cards" icon={<BarChart3 size={18} />} /><InsightMetric label="Connection coverage" value={`${bundles.length ? Math.round((connectedCards / bundles.length) * 100) : 0}%`} helper="Cards with a way to reach you" icon={<Share2 size={18} />} /></div><div className="insights-layout"><section className="insight-panel insight-readiness-panel"><div className="insight-panel-heading"><div><p className="eyebrow">Readiness by card</p><h2>Build confidence before you share.</h2></div><span className="insight-panel-badge"><TrendingUp size={13} /> Live snapshot</span></div>{bundles.length ? <div className="insight-card-list">{bundles.map((bundle) => { const name = bundle.fields.find((field) => field.fieldType === 'name')?.value || bundle.card.cardName; const readiness = getCardReadiness(bundle); return <button className="insight-card-row" key={bundle.card.id} onClick={() => onEdit(bundle.card.id)}><span className="insight-card-identity"><span className="insight-card-avatar" style={{ background: bundle.card.design.accentColor }}>{initials(name)}</span><span><strong>{bundle.card.cardName}</strong><small>{bundle.fields.filter((field) => field.value.trim()).length} details · {bundle.card.isPublished ? 'Published' : 'Draft'}</small></span></span><span className="insight-card-bar"><span style={{ width: `${readiness}%` }} /></span><strong className="insight-card-percent">{readiness}%</strong><ArrowRight size={14} className="insight-card-arrow" /></button> })}</div> : <div className="workspace-empty workspace-empty-inline"><div className="workspace-empty-icon"><BarChart3 size={20} /></div><h2>Your first insight is one card away.</h2><p>Create a card to see its share-readiness here.</p><button className="button button-primary" onClick={onCreate}><Plus size={15} /> Create card</button></div>}</section><aside className="insight-panel insight-recommendation"><div className="insight-recommendation-icon"><Lightbulb size={18} /></div><p className="eyebrow">Next best move</p><h2>{bundles.length && averageReadiness === 100 ? 'Your cards are ready for more conversations.' : 'Add one clear way for people to reach you.'}</h2><p>{bundles.length && averageReadiness === 100 ? 'Keep your strongest card visible, then make sharing part of your next introduction.' : 'A phone number, email, or WhatsApp link turns a good introduction into an easy next step.'}</p><button className="button button-ghost" onClick={bundles[0] ? () => onEdit(bundles[0].card.id) : onCreate}>{bundles[0] ? 'Improve my card' : 'Create my first card'} <ArrowUpRight size={14} /></button></aside></div></main><MobileWorkspaceNav active="insights" onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={() => undefined} onCreate={onCreate} /></div>
+  return <div className="dashboard-layout"><WorkspaceSidebar active="insights" user={user} onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={() => undefined} onSignatures={onSignatures} onSignOut={onSignOut} /><main className="dashboard-main workspace-page-main"><div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-overview-link" onClick={onCards}><ArrowLeft size={14} /> Cards</button></div><header className="workspace-page-header"><div className="workspace-page-heading"><p className="eyebrow">Profile insights</p><h1>Make every share count.</h1><p>A clear read on the details that make your digital introduction feel complete.</p></div><button className="button button-primary" onClick={onCreate}><Plus size={16} /> Add a card</button></header><div className="insight-metric-grid"><InsightMetric label="Share readiness" value={`${averageReadiness}%`} helper="Average across your cards" icon={<TrendingUp size={18} />} accent /><InsightMetric label="Published cards" value={String(bundles.filter((bundle) => bundle.card.isPublished).length).padStart(2, '0')} helper="Ready for real introductions" icon={<Eye size={18} />} /><InsightMetric label="Details added" value={String(totalFields).padStart(2, '0')} helper="Fields powering your cards" icon={<BarChart3 size={18} />} /><InsightMetric label="Connection coverage" value={`${bundles.length ? Math.round((connectedCards / bundles.length) * 100) : 0}%`} helper="Cards with a way to reach you" icon={<Share2 size={18} />} /></div><div className="insights-layout"><section className="insight-panel insight-readiness-panel"><div className="insight-panel-heading"><div><p className="eyebrow">Readiness by card</p><h2>Build confidence before you share.</h2></div><span className="insight-panel-badge"><TrendingUp size={13} /> Live snapshot</span></div>{bundles.length ? <div className="insight-card-list">{bundles.map((bundle) => { const name = bundle.fields.find((field) => field.fieldType === 'name')?.value || bundle.card.cardName; const readiness = getCardReadiness(bundle); return <button className="insight-card-row" key={bundle.card.id} onClick={() => onEdit(bundle.card.id)}><span className="insight-card-identity"><span className="insight-card-avatar" style={{ background: bundle.card.design.accentColor }}>{initials(name)}</span><span><strong>{bundle.card.cardName}</strong><small>{bundle.fields.filter((field) => field.value.trim()).length} details · {bundle.card.isPublished ? 'Published' : 'Draft'}</small></span></span><span className="insight-card-bar"><span style={{ width: `${readiness}%` }} /></span><strong className="insight-card-percent">{readiness}%</strong><ArrowRight size={14} className="insight-card-arrow" /></button> })}</div> : <div className="workspace-empty workspace-empty-inline"><div className="workspace-empty-icon"><BarChart3 size={20} /></div><h2>Your first insight is one card away.</h2><p>Create a card to see its share-readiness here.</p><button className="button button-primary" onClick={onCreate}><Plus size={15} /> Create card</button></div>}</section><aside className="insight-panel insight-recommendation"><div className="insight-recommendation-icon"><Lightbulb size={18} /></div><p className="eyebrow">Next best move</p><h2>{bundles.length && averageReadiness === 100 ? 'Your cards are ready for more conversations.' : 'Add one clear way for people to reach you.'}</h2><p>{bundles.length && averageReadiness === 100 ? 'Keep your strongest card visible, then make sharing part of your next introduction.' : 'A phone number, email, or WhatsApp link turns a good introduction into an easy next step.'}</p><button className="button button-ghost" onClick={bundles[0] ? () => onEdit(bundles[0].card.id) : onCreate}>{bundles[0] ? 'Improve my card' : 'Create my first card'} <ArrowUpRight size={14} /></button></aside></div></main><MobileWorkspaceNav active="insights" onCards={onCards} onOverview={onOverview} onTemplates={onTemplates} onInsights={() => undefined} onSignatures={onSignatures} onCreate={onCreate} /></div>
 }
 
 function InsightMetric({ label, value, helper, icon, accent = false }: { label: string; value: string; helper: string; icon: ReactNode; accent?: boolean }) {
