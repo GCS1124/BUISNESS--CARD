@@ -1,6 +1,8 @@
 import { FormEvent, useState } from 'react'
 import { ArrowRight, Check, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { BrandLockup } from './BrandLockup'
+import { useBranding } from './BrandingProvider'
 import type { AppUser } from '../lib/types'
 
 interface AuthScreenProps {
@@ -9,6 +11,7 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ onDemo, onAuthenticated }: AuthScreenProps) {
+  const { branding } = useBranding()
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,7 +58,7 @@ export function AuthScreen({ onDemo, onAuthenticated }: AuthScreenProps) {
   return (
     <main className="auth-page">
       <div className="auth-visual">
-        <div className="auth-brand"><span className="brand-mark brand-mark-light">c</span><span>cardly</span></div>
+        <div className="auth-brand"><BrandLockup light /></div>
         <div className="auth-visual-copy"><p className="eyebrow">Your digital first impression</p><h1>Be easy to remember.</h1><p>One beautiful card for every conversation, introduction, and opportunity.</p></div>
         <div className="auth-quote"><Sparkles size={15} /> Designed for the moments that matter.</div>
       </div>
@@ -71,7 +74,7 @@ export function AuthScreen({ onDemo, onAuthenticated }: AuthScreenProps) {
             <button className="button button-primary button-wide" disabled={busy}>{busy ? 'Working…' : mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in'} <ArrowRight size={16} /></button>
           </form>
           {mode === 'login' && <button className="auth-link auth-forgot" onClick={() => { setMode('forgot'); setMessage(''); setError('') }}><KeyRound size={14} /> Forgot password?</button>}
-          {mode !== 'forgot' && <p className="auth-switch">{mode === 'signup' ? 'Already have an account?' : 'New to Cardly?'} <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage('') }}>{mode === 'signup' ? 'Sign in' : 'Create an account'}</button></p>}
+          {mode !== 'forgot' && <p className="auth-switch">{mode === 'signup' ? 'Already have an account?' : `New to ${branding.productName}?`} <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage('') }}>{mode === 'signup' ? 'Sign in' : 'Create an account'}</button></p>}
           {mode === 'forgot' && <button className="auth-link" onClick={() => setMode('login')}>Back to sign in</button>}
           {!isSupabaseConfigured && <button className="demo-button" onClick={onDemo}><ShieldCheck size={15} /> Continue in demo mode <span>Local-only, no account needed</span></button>}
         </div>

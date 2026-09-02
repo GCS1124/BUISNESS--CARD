@@ -2,6 +2,7 @@ import { ArrowUpRight, ChevronRight, Mail, MapPin, PhoneCall, Share2 } from 'luc
 import type { CardBundle, CardField } from '../lib/types'
 import { getIcon } from '../lib/icons'
 import { fieldDefinitions } from '../lib/fieldDefinitions'
+import { useBranding } from './BrandingProvider'
 
 interface PhonePreviewProps {
   bundle: CardBundle
@@ -44,6 +45,7 @@ function fieldText(field: CardField) {
 }
 
 export function PhonePreview({ bundle, onShare, publicView = false }: PhonePreviewProps) {
+  const { branding } = useBranding()
   const { card, fields } = bundle
   const visibleField = (type: CardField['fieldType']) => fields.find((field) => field.fieldType === type && field.isVisible && field.value.trim())
   const name = visibleField('name')?.value || 'Your name'
@@ -90,7 +92,7 @@ export function PhonePreview({ bundle, onShare, publicView = false }: PhonePrevi
               return href ? <a key={field.id} className="phone-detail" href={href} target={isExternal(field) ? '_blank' : undefined} rel={isExternal(field) ? 'noreferrer' : undefined}>{content}</a> : <div key={field.id} className="phone-detail">{content}</div>
             })}
           </div>
-          <div className="phone-footer-note"><span /> Shared with Cardly <ArrowUpRight size={12} /></div>
+          <div className="phone-footer-note"><span /> Shared with {branding.productName} <ArrowUpRight size={12} /></div>
         </div>
       </div>
     </div>

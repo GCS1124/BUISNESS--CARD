@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ArrowLeft, Check, Code2, Copy, FileSignature, Image, Link2, Mail, Monitor, Palette, Plus, Smartphone, Sparkles, Trash2, Upload, UserRound } from 'lucide-react'
 import { EmailSignaturePreview } from './EmailSignaturePreview'
+import { BrandLockup } from './BrandLockup'
 import { applyBusinessCardSnapshot, generateEmailSignatureHtml, signatureFieldConfig, signatureTemplates, socialLinkConfig, templateBranding } from '../lib/signatures'
 import type { AppUser, CardBundle, EmailSignature, SignatureContactDetails, SignatureCtaType, SignatureSocialLinks } from '../lib/types'
 
@@ -19,6 +20,7 @@ interface EmailSignaturesPageProps {
   onTemplates: () => void
   onInsights: () => void
   onSignatures: () => void
+  onBranding: () => void
   onSignOut: () => void
   onToast: (message: string, tone?: 'success' | 'error') => void
 }
@@ -33,7 +35,7 @@ const ctaOptions: Array<{ value: SignatureCtaType; label: string }> = [
 const formatUpdated = (value: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
 const isValidEmail = (value: string) => !value.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 
-export function EmailSignaturesPage({ user, bundles, signatures, saveState, saveError, onCreate, onUpdate, onDuplicate, onDelete, onCards, onTemplates, onInsights, onSignatures, onSignOut, onToast }: EmailSignaturesPageProps) {
+export function EmailSignaturesPage({ user, bundles, signatures, saveState, saveError, onCreate, onUpdate, onDuplicate, onDelete, onCards, onTemplates, onInsights, onSignatures, onBranding, onSignOut, onToast }: EmailSignaturesPageProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mobilePreview, setMobilePreview] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -52,18 +54,18 @@ export function EmailSignaturesPage({ user, bundles, signatures, saveState, save
     if (selectedId === id) setSelectedId(null)
   }
 
-  if (selected) return <SignatureEditor signature={selected} user={user} bundles={bundles} saveState={saveState} saveError={saveError} mobilePreview={mobilePreview} onMobilePreview={setMobilePreview} onUpdate={updateSelected} onBack={() => setSelectedId(null)} onDuplicate={() => duplicate(selected)} onDelete={() => setConfirmDeleteId(selected.id)} onToast={onToast} />
+  if (selected) return <div className="signature-editor-workspace"><SignatureSidebar active="signatures" user={user} onCards={onCards} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onBranding={onBranding} onSignOut={onSignOut} /><SignatureEditor signature={selected} user={user} bundles={bundles} saveState={saveState} saveError={saveError} mobilePreview={mobilePreview} onMobilePreview={setMobilePreview} onUpdate={updateSelected} onBack={() => setSelectedId(null)} onDuplicate={() => duplicate(selected)} onDelete={() => setConfirmDeleteId(selected.id)} onToast={onToast} /></div>
 
   return <div className="dashboard-layout">
-    <SignatureSidebar active="signatures" user={user} onCards={onCards} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onSignOut={onSignOut} />
+    <SignatureSidebar active="signatures" user={user} onCards={onCards} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onBranding={onBranding} onSignOut={onSignOut} />
     <main className="dashboard-main workspace-page-main signature-page-main">
-      <div className="mobile-workspace-bar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><button className="mobile-workspace-actions mobile-signature-new" onClick={createSignature}><Plus size={16} /></button></div>
+      <div className="mobile-workspace-bar"><BrandLockup /><button className="mobile-workspace-actions mobile-signature-new" onClick={createSignature}><Plus size={16} /></button></div>
       <header className="workspace-page-header signature-page-header"><div className="workspace-page-heading"><p className="eyebrow">Workspace tool</p><h1>Email signatures that sound like you.</h1><p>Create a polished, email-safe signature once, then take it with you to Gmail, Outlook, and every introduction after.</p></div><button className="button button-primary" onClick={createSignature}><Plus size={16} /> Create signature</button></header>
       <div className="signature-page-toolbar"><div className="signature-toolbar-copy"><FileSignature size={18} /><span><strong>{signatures.length}</strong> {signatures.length === 1 ? 'signature' : 'signatures'} in your workspace</span></div><span className="signature-toolbar-note">Tables, inline styles, no external CSS</span></div>
       {signatures.length ? <div className="signature-list">{signatures.map((signature) => <SignatureListCard key={signature.id} signature={signature} onEdit={() => setSelectedId(signature.id)} onDuplicate={() => duplicate(signature)} onDelete={() => setConfirmDeleteId(signature.id)} />)}</div> : <SignatureEmptyState onCreate={createSignature} />}
       {confirmDeleteId && <DeleteSignatureDialog onCancel={() => setConfirmDeleteId(null)} onConfirm={() => void deleteSignature(confirmDeleteId)} />}
     </main>
-    <SignatureMobileNav active="signatures" onCards={onCards} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onCreate={createSignature} />
+    <SignatureMobileNav active="signatures" onCards={onCards} onTemplates={onTemplates} onInsights={onInsights} onSignatures={onSignatures} onBranding={onBranding} onCreate={createSignature} />
   </div>
 }
 
@@ -159,12 +161,12 @@ function DeleteSignatureDialog({ onCancel, onConfirm }: { onCancel: () => void; 
   return <div className="dialog-backdrop"><div className="confirm-dialog signature-confirm-dialog"><div className="confirm-dialog-icon"><Trash2 size={18} /></div><h2>Delete this signature?</h2><p>This removes the signature from your workspace. Copied signatures already in your inboxes won’t be affected.</p><div className="confirm-dialog-actions"><button className="button button-ghost" onClick={onCancel}>Keep it</button><button className="button button-danger" onClick={onConfirm}>Delete signature</button></div></div></div>
 }
 
-type SignatureWorkspaceSection = 'cards' | 'templates' | 'insights' | 'signatures'
+type SignatureWorkspaceSection = 'cards' | 'templates' | 'insights' | 'signatures' | 'branding'
 
-function SignatureSidebar({ active, user, onCards, onTemplates, onInsights, onSignatures, onSignOut }: { active: SignatureWorkspaceSection; user: AppUser; onCards: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onSignOut: () => void }) {
-  return <aside className="sidebar"><div className="brand"><span className="brand-mark">c</span><span>cardly</span></div><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} onClick={onCards}><FileSignature size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} onClick={onTemplates}><Sparkles size={17} /> Templates</button><button className={`sidebar-link ${active === 'signatures' ? 'sidebar-link-active' : ''}`} onClick={onSignatures}><Mail size={17} /> Email signatures</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} onClick={onInsights}><Palette size={17} /> Insights</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Bring your digital identity into every email.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{user.name.slice(0, 1).toUpperCase()}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{user.email}</span></span></button></div></aside>
+function SignatureSidebar({ active, user, onCards, onTemplates, onInsights, onSignatures, onBranding, onSignOut }: { active: SignatureWorkspaceSection; user: AppUser; onCards: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onSignOut: () => void }) {
+  return <aside className="sidebar"><BrandLockup /><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} onClick={onCards}><FileSignature size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} onClick={onTemplates}><Sparkles size={17} /> Templates</button><button className={`sidebar-link ${active === 'signatures' ? 'sidebar-link-active' : ''}`} onClick={onSignatures}><Mail size={17} /> Email signatures</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} onClick={onInsights}><Palette size={17} /> Insights</button><button className={`sidebar-link ${active === 'branding' ? 'sidebar-link-active' : ''}`} onClick={onBranding}><Palette size={17} /> Branding</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Bring your digital identity into every email.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{user.name.slice(0, 1).toUpperCase()}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{user.email}</span></span></button></div></aside>
 }
 
-function SignatureMobileNav({ active, onCards, onTemplates, onInsights, onSignatures, onCreate }: { active: SignatureWorkspaceSection; onCards: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onCreate: () => void }) {
-  return <nav className="mobile-bottom-nav signature-mobile-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} onClick={onCards}><FileSignature size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} onClick={onTemplates}><Sparkles size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'signatures' ? 'mobile-bottom-link-active' : ''}`} onClick={onSignatures}><Mail size={16} /><span>Signatures</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} onClick={onInsights}><Palette size={16} /><span>Insights</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
+function SignatureMobileNav({ active, onCards, onTemplates, onInsights, onSignatures, onBranding, onCreate }: { active: SignatureWorkspaceSection; onCards: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onCreate: () => void }) {
+  return <nav className="mobile-bottom-nav signature-mobile-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} onClick={onCards}><FileSignature size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} onClick={onTemplates}><Sparkles size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'signatures' ? 'mobile-bottom-link-active' : ''}`} onClick={onSignatures}><Mail size={16} /><span>Signatures</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} onClick={onInsights}><Palette size={16} /><span>Insights</span></button><button className={`mobile-bottom-link ${active === 'branding' ? 'mobile-bottom-link-active' : ''}`} onClick={onBranding}><Palette size={16} /><span>Branding</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
 }
