@@ -62,32 +62,32 @@ body { background: #f7f8f3; }
 .card-tile-footer h3 { font-size: 13px; }
 .dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(285px, .65fr); align-items: start; gap: 20px; margin-top: 23px; }
 .dashboard-content-grid .card-grid { margin-top: 0; }
-.workspace-spotlight { position: sticky; top: 28px; overflow: hidden; padding: 22px; border: 1px solid #1e6c5b; border-radius: 20px; color: #f2faf3; background: linear-gradient(150deg, #1a6b5a 0%, #0d4d42 100%); box-shadow: 0 17px 35px rgba(18, 86, 68, .16); }
-.workspace-spotlight::before { content: ''; position: absolute; top: -78px; right: -54px; width: 210px; height: 210px; border: 1px solid rgba(208, 244, 215, .2); border-radius: 50%; box-shadow: 0 0 0 24px rgba(208, 244, 215, .045), 0 0 0 50px rgba(208, 244, 215, .025); pointer-events: none; }
+.workspace-spotlight { position: sticky; top: 28px; overflow: hidden; padding: 22px; border: 1px solid #3b548b; border-radius: 20px; color: #f4f7ff; background: linear-gradient(150deg, #304776 0%, #151f48 100%); box-shadow: 0 17px 35px rgba(30, 42, 91, .22); }
+.workspace-spotlight::before { content: ''; position: absolute; top: -78px; right: -54px; width: 210px; height: 210px; border: 1px solid rgba(192, 214, 255, .24); border-radius: 50%; box-shadow: 0 0 0 24px rgba(192, 214, 255, .06), 0 0 0 50px rgba(192, 214, 255, .035); pointer-events: none; }
 .spotlight-header, .spotlight-score, .spotlight-check, .spotlight-actions { position: relative; z-index: 1; }
 .spotlight-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.workspace-spotlight .eyebrow { color: #b9ddc5; }
+.workspace-spotlight .eyebrow { color: #b9c9ed; }
 .spotlight-header h3 { max-width: 210px; margin: 0; color: #f3fbf3; font-size: 20px; line-height: 1.05; letter-spacing: -.065em; }
-.spotlight-status { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; color: #d5f2da; border: 1px solid rgba(211, 241, 215, .25); border-radius: 999px; background: rgba(255, 255, 255, .09); text-transform: uppercase; letter-spacing: .09em; font-size: 7px; font-weight: 800; white-space: nowrap; }
-.spotlight-status-dot { width: 5px; height: 5px; border-radius: 50%; background: #b8ef9c; box-shadow: 0 0 0 3px rgba(184, 239, 156, .13); }
+.spotlight-status { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; color: #dce6ff; border: 1px solid rgba(209, 224, 255, .3); border-radius: 999px; background: rgba(255, 255, 255, .1); text-transform: uppercase; letter-spacing: .09em; font-size: 7px; font-weight: 800; white-space: nowrap; }
+.spotlight-status-dot { width: 5px; height: 5px; border-radius: 50%; background: #c9f58c; box-shadow: 0 0 0 3px rgba(201, 245, 140, .14); }
 .spotlight-score { display: flex; align-items: flex-end; gap: 14px; margin-top: 30px; }
 .spotlight-score > div:first-child { display: flex; align-items: baseline; gap: 8px; }
 .spotlight-score strong { color: #fff; font-size: 40px; line-height: .9; letter-spacing: -.09em; }
-.spotlight-score span { color: #b8dcca; font-size: 9px; font-weight: 700; }
-.spotlight-progress { position: relative; height: 8px; flex: 1; overflow: hidden; border-radius: 999px; background: rgba(222, 244, 222, .17); }
-.spotlight-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c6f09c, #e2f6c2); box-shadow: 0 0 15px rgba(198, 240, 156, .3); }
-.spotlight-checklist { display: grid; gap: 9px; margin-top: 29px; padding-top: 17px; border-top: 1px solid rgba(207, 236, 212, .17); }
+.spotlight-score span { color: #bdcbee; font-size: 9px; font-weight: 700; }
+.spotlight-progress { position: relative; height: 8px; flex: 1; overflow: hidden; border-radius: 999px; background: rgba(215, 227, 255, .18); }
+.spotlight-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c9f58c, #f0f5ba); box-shadow: 0 0 15px rgba(201, 245, 140, .32); }
+.spotlight-checklist { display: grid; gap: 9px; margin-top: 29px; padding-top: 17px; border-top: 1px solid rgba(209, 224, 255, .18); }
 .spotlight-check { display: grid; grid-template-columns: 23px 1fr auto; align-items: center; gap: 8px; }
-.spotlight-check > span:first-child { display: grid; place-items: center; width: 21px; height: 21px; color: #c6efb2; border: 1px solid rgba(210, 242, 213, .28); border-radius: 7px; background: rgba(255, 255, 255, .08); }
-.spotlight-check > span:first-child > span { width: 6px; height: 6px; border: 1px solid #a8c8b0; border-radius: 50%; }
-.spotlight-check p { margin: 0; color: #dbf0df; font-size: 10px; font-weight: 800; }
-.spotlight-check small { color: #91c2a6; font-size: 8px; font-weight: 700; }
-.spotlight-check-done small { color: #c7ecb9; }
+.spotlight-check > span:first-child { display: grid; place-items: center; width: 21px; height: 21px; color: #d9f6ae; border: 1px solid rgba(211, 226, 255, .3); border-radius: 7px; background: rgba(255, 255, 255, .09); }
+.spotlight-check > span:first-child > span { width: 6px; height: 6px; border: 1px solid #aebdde; border-radius: 50%; }
+.spotlight-check p { margin: 0; color: #e4ebff; font-size: 10px; font-weight: 800; }
+.spotlight-check small { color: #a8b6d9; font-size: 8px; font-weight: 700; }
+.spotlight-check-done small { color: #d2efa8; }
 .spotlight-actions { display: grid; gap: 8px; margin-top: 24px; }
-.spotlight-actions .button { width: 100%; color: #174e3e; background: #e2f5d8; box-shadow: none; }
-.spotlight-actions .button:hover { color: #123d32; background: #f0f9e8; }
-.spotlight-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 35px; color: #c4dfcb; border: 1px solid rgba(209, 239, 214, .23); border-radius: 10px; background: rgba(255, 255, 255, .06); font-size: 9px; font-weight: 800; }
-.spotlight-secondary:hover { color: #fff; background: rgba(255, 255, 255, .13); }
+.spotlight-actions .button { width: 100%; color: #1f2e59; background: #e8f6b8; box-shadow: none; }
+.spotlight-actions .button:hover { color: #172348; background: #f4fbd6; }
+.spotlight-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 35px; color: #cbd7f0; border: 1px solid rgba(211, 226, 255, .25); border-radius: 10px; background: rgba(255, 255, 255, .07); font-size: 9px; font-weight: 800; }
+.spotlight-secondary:hover { color: #fff; background: rgba(255, 255, 255, .14); }
 
 .builder-shell { background: radial-gradient(circle at 5% 5%, rgba(224, 242, 227, .55), transparent 25rem), #f7faf5; }
 .builder-header { height: 72px; padding: 0 32px; border-bottom-color: rgba(211, 225, 214, .88); background: rgba(250, 252, 248, .85); box-shadow: 0 4px 19px rgba(35, 64, 46, .04); }
