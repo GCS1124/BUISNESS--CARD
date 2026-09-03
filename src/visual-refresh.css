@@ -604,7 +604,7 @@ button, input, select { font-family: inherit; }
 .signature-finish-button { box-shadow: 0 8px 18px rgba(22,92,81,.16); }
 .signature-editor-layout { grid-template-columns: minmax(320px, .72fr) minmax(490px, 1.28fr); gap: 22px; max-width: 1500px; padding-top: 26px; }
 .signature-editor-left { display: grid; align-content: start; gap: 13px; min-width: 0; }
-.signature-section-nav { position: sticky; z-index: 3; top: 101px; display: grid; gap: 4px; padding: 13px; border: 1px solid #d8e4ef; border-radius: 18px; background: rgba(255,255,255,.95); box-shadow: 0 12px 28px rgba(45,73,111,.06); }
+.signature-section-nav { display: grid; gap: 4px; padding: 13px; border: 1px solid #d8e4ef; border-radius: 18px; background: rgba(255,255,255,.95); box-shadow: 0 12px 28px rgba(45,73,111,.06); }
 .signature-section-nav-intro { display: grid; gap: 3px; padding: 7px 9px 12px; border-bottom: 1px solid #edf2f7; }
 .signature-section-nav-intro strong { color: #13243c; font-size: 13px; }
 .signature-section-link { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 10px 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #71839a; text-align: left; cursor: pointer; transition: background .16s ease, border .16s ease, color .16s ease, transform .16s ease; }
@@ -633,7 +633,9 @@ button, input, select { font-family: inherit; }
 .signature-template-option:hover { border-color: #9bc7bb; background: #f3faf7; }
 .signature-template-option-active { border-color: #74b19b; background: #edf8f3; box-shadow: 0 0 0 3px rgba(116,177,155,.11); }
 .signature-template-mini-preview { position: relative; display: block; flex: 0 0 auto; width: 76px; height: 54px; overflow: hidden; border: 1px solid rgba(19,36,60,.08); border-radius: 9px; }
-.signature-template-mini-preview > span { position: absolute; top: 8px; left: 8px; width: 15px; height: 15px; border-radius: 50%; }
+.signature-template-mini-mark { position: absolute; left: 8px; width: 15px; height: 15px; border-radius: 50%; }
+.signature-template-mini-mark-primary { top: 8px; }
+.signature-template-mini-mark-secondary { top: 31px; opacity: .7; }
 .signature-template-mini-preview i,
 .signature-template-mini-preview b,
 .signature-template-mini-preview em { position: absolute; left: 30px; display: block; height: 3px; border-radius: 4px; opacity: .85; }

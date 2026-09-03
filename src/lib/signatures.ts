@@ -2,7 +2,7 @@ import { makeId } from './storage'
 import type { AppUser, CardBundle, EmailSignature, SignatureBranding, SignatureContactDetails, SignatureCtaSettings, SignatureSocialLinks } from './types'
 
 export const signatureTemplates: Array<{ id: string; name: string; description: string; swatches: string[]; branding: Partial<SignatureBranding> }> = [
-  { id: 'minimal', name: 'Minimal', description: 'Quiet, compact, and easy to scan.', swatches: ['#2e5679', '#eef3f7'], branding: { layout: 'photo-left', primaryColor: '#1f2f38', accentColor: '#eef3f7', textColor: '#1f2f38', secondaryTextColor: '#5f6f78', iconColor: '#2e5679', dividerColor: '#e5ebef', ctaColor: '#2e5679', alignment: 'left', showDivider: true, buttonStyle: 'solid', iconStyle: 'filled', iconShape: 'circle', imageShape: 'circle', nameSize: 28, jobTitleSize: 20, detailsSize: 16, photoSize: 120, logoSize: 120, spacing: 24, iconSize: 15 } },
+  { id: 'executive', name: 'Executive Photo', description: 'A polished two-image signature for a memorable introduction.', swatches: ['#1f3d67', '#eef2f5'], branding: { layout: 'photo-left', primaryColor: '#1f3d67', accentColor: '#f5f7fa', textColor: '#292929', secondaryTextColor: '#303030', iconColor: '#1f3d67', dividerColor: '#dce3ea', ctaColor: '#1f3d67', alignment: 'left', showDivider: true, buttonStyle: 'solid', iconStyle: 'filled', iconShape: 'circle', imageShape: 'circle', nameSize: 25, jobTitleSize: 18, detailsSize: 16, photoSize: 100, logoSize: 100, spacing: 18, iconSize: 15 } },
   { id: 'classic', name: 'Classic', description: 'A dependable layout for everyday work.', swatches: ['#0f4038', '#e2eee8'], branding: { primaryColor: '#0f4038', accentColor: '#e2eee8', textColor: '#18332d', alignment: 'left', showDivider: true, buttonStyle: 'solid', iconStyle: 'filled', dividerStyle: 'solid' } },
   { id: 'modern', name: 'Modern', description: 'A confident color block with a crisp rhythm.', swatches: ['#165c51', '#f0f5ef'], branding: { primaryColor: '#165c51', accentColor: '#f0f5ef', textColor: '#14221f', alignment: 'left', showDivider: true, buttonStyle: 'soft', iconStyle: 'outline', dividerStyle: 'dashed' } },
   { id: 'corporate', name: 'Corporate', description: 'Structured, polished, and presentation-ready.', swatches: ['#234b45', '#d9e6da'], branding: { primaryColor: '#234b45', accentColor: '#d9e6da', textColor: '#193b34', alignment: 'left', showDivider: true, buttonStyle: 'solid', iconStyle: 'filled', dividerStyle: 'solid' } },
@@ -37,30 +37,30 @@ export const socialLinkConfig: Array<{ key: keyof SignatureSocialLinks; label: s
 ]
 
 export const defaultSignatureBranding: SignatureBranding = {
-  layout: 'standard',
-  primaryColor: '#165c51',
-  accentColor: '#cde7e0',
-  textColor: '#14221f',
-  secondaryTextColor: '#6d7e74',
-  iconColor: '#165c51',
-  dividerColor: '#d9e6da',
-  ctaColor: '#165c51',
+  layout: 'photo-left',
+  primaryColor: '#1f3d67',
+  accentColor: '#f5f7fa',
+  textColor: '#292929',
+  secondaryTextColor: '#303030',
+  iconColor: '#1f3d67',
+  dividerColor: '#dce3ea',
+  ctaColor: '#1f3d67',
   fontFamily: 'Arial',
-  fontSize: 14,
-  nameSize: 20,
-  detailsSize: 12,
-  jobTitleSize: 13,
-  logoSize: 72,
-  photoSize: 72,
-  spacing: 16,
-  iconSize: 12,
+  fontSize: 15,
+  nameSize: 25,
+  detailsSize: 16,
+  jobTitleSize: 18,
+  logoSize: 100,
+  photoSize: 100,
+  spacing: 18,
+  iconSize: 15,
   dividerThickness: 1,
-  showDivider: false,
+  showDivider: true,
   dividerStyle: 'solid',
   imageShape: 'circle',
-  iconShape: 'rounded',
-  iconStyle: 'text',
-  buttonStyle: 'outline',
+  iconShape: 'circle',
+  iconStyle: 'filled',
+  buttonStyle: 'solid',
   alignment: 'left',
 }
 
@@ -101,16 +101,20 @@ const text = (value: unknown) => typeof value === 'string' ? value : ''
 
 export function normalizeSignature(value: Partial<EmailSignature>): EmailSignature {
   const now = new Date().toISOString()
+  const requestedTemplateId = text(value.templateId)
+  const templateId = !requestedTemplateId || requestedTemplateId === 'minimal' ? 'executive' : requestedTemplateId
+  const providedBranding = { ...defaultSignatureBranding, ...(value.branding ?? {}) }
+  const branding = requestedTemplateId === 'minimal' ? templateBranding('executive', providedBranding) : providedBranding
   const visibleFields = { ...Object.fromEntries(Object.keys(emptyContactDetails).map((key) => [key, true])), ...(value.visibleFields ?? {}) }
   return {
     id: text(value.id) || makeId(),
     userId: text(value.userId),
     name: text(value.name) || 'Untitled signature',
-    templateId: text(value.templateId) || 'minimal',
+    templateId,
     contactDetails: { ...emptyContactDetails, ...(value.contactDetails ?? {}) },
     visibleFields,
     socialLinks: { ...emptySocialLinks, ...(value.socialLinks ?? {}) },
-    branding: { ...defaultSignatureBranding, ...(value.branding ?? {}) },
+    branding,
     ctaSettings: { ...emptyCtaSettings, ...(value.ctaSettings ?? {}) },
     profileImageUrl: text(value.profileImageUrl),
     companyLogoUrl: text(value.companyLogoUrl),
@@ -167,7 +171,8 @@ export function duplicateSignature(source: EmailSignature): EmailSignature {
 }
 
 export function templateBranding(templateId: string, current: SignatureBranding): SignatureBranding {
-  const template = signatureTemplates.find((item) => item.id === templateId)
+  const resolvedTemplateId = templateId === 'minimal' ? 'executive' : templateId
+  const template = signatureTemplates.find((item) => item.id === resolvedTemplateId)
   return { ...current, ...(template?.branding ?? {}) }
 }
 
@@ -209,10 +214,7 @@ export function generateEmailSignatureText(signature: EmailSignature) {
 }
 
 export function generateEmailSignatureHtml(signature: EmailSignature, businessCardUrl = '', options: { allowLocalImages?: boolean } = {}) {
-  const baseSignature = normalizeSignature(signature)
-  const normalized = baseSignature.templateId === 'minimal' && baseSignature.branding.layout === 'standard'
-    ? { ...baseSignature, branding: templateBranding('minimal', baseSignature.branding) }
-    : baseSignature
+  const normalized = normalizeSignature(signature)
   const { contactDetails: contact, visibleFields: visible, socialLinks: socials, branding: brand, ctaSettings: cta } = normalized
   const font = escapeHtml(safeFont(brand.fontFamily))
   const primary = safeColor(brand.primaryColor, defaultSignatureBranding.primaryColor)
@@ -226,6 +228,7 @@ export function generateEmailSignatureHtml(signature: EmailSignature, businessCa
   const padding = Math.max(8, Math.min(32, Math.round(brand.spacing)))
   const photo = options.allowLocalImages ? imageSource(normalized.profileImageUrl) : httpsImage(normalized.profileImageUrl)
   const logo = options.allowLocalImages ? imageSource(normalized.companyLogoUrl) : httpsImage(normalized.companyLogoUrl)
+  const secondaryImage = logo || photo
   const iconCdn = 'https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/'
   const contactIconSources = { website: 'globe', phone: 'phone', email: 'mail', address: 'map-pin' } as const
   const socialIconSources: Record<keyof SignatureSocialLinks, string> = { linkedin: 'linkedin', facebook: 'facebook', instagram: 'instagram', twitter: 'twitter', youtube: 'youtube', github: 'github', whatsapp: 'message-circle' }
@@ -234,6 +237,7 @@ export function generateEmailSignatureHtml(signature: EmailSignature, businessCa
   const photoPadding = brand.alignment === 'right' ? `padding:0 0 0 ${padding}px;` : `padding:0 ${padding}px 0 0;`
   const photoImage = photo ? `<img src="${escapeHtml(photo)}" width="${Math.max(40, Math.min(140, Math.round(brand.photoSize)))}" height="${Math.max(40, Math.min(140, Math.round(brand.photoSize)))}" alt="${escapeHtml(contact.fullName || 'Profile photo')}" style="display:block;border:0;border-radius:${imageRadius(brand.imageShape)};object-fit:cover;">` : ''
   const logoImage = logo ? `<img src="${escapeHtml(logo)}" width="${Math.max(48, Math.min(180, Math.round(brand.logoSize)))}" height="${Math.max(48, Math.min(180, Math.round(brand.logoSize)))}" alt="${escapeHtml(contact.companyName || 'Company logo')}" style="display:block;border:0;border-radius:${imageRadius(brand.imageShape)};object-fit:cover;">` : ''
+  const secondaryImageMarkup = secondaryImage ? `<img src="${escapeHtml(secondaryImage)}" width="${Math.max(48, Math.min(180, Math.round(brand.logoSize)))}" height="${Math.max(48, Math.min(180, Math.round(brand.logoSize)))}" alt="${escapeHtml(logo ? (contact.companyName || 'Company logo') : `${contact.fullName || 'Profile'} second photo`)}" style="display:block;border:0;border-radius:${imageRadius(brand.imageShape)};object-fit:cover;">` : ''
   const imageHtml = photo ? `<td valign="top" style="${photoPadding}">${photoImage}</td>` : ''
   const logoHtml = logo ? `<tr><td style="padding:0 0 ${Math.max(8, padding / 2)}px 0;"><img src="${escapeHtml(logo)}" width="${Math.max(48, Math.min(180, Math.round(brand.logoSize)))}" alt="${escapeHtml(contact.companyName || 'Company logo')}" style="display:block;border:0;max-width:180px;height:auto;"></td></tr>` : ''
   const identity = [visible.jobTitle !== false ? contact.jobTitle : '', visible.department !== false ? contact.department : '', visible.companyName !== false ? contact.companyName : ''].filter(Boolean).join(' · ')
@@ -247,7 +251,7 @@ export function generateEmailSignatureHtml(signature: EmailSignature, businessCa
     visible.email !== false ? detailRow('email', contact.email, contactHref(contact.email, 'email')) : '',
     visible.officeAddress !== false ? detailRow('address', contact.officeAddress) : '',
   ].filter(Boolean).join('')
-  const isPhotoLeft = brand.layout === 'photo-left' || normalized.templateId === 'minimal'
+  const isPhotoLeft = brand.layout === 'photo-left' || normalized.templateId === 'executive'
   const socialOrder: Array<keyof SignatureSocialLinks> = ['linkedin', 'facebook', 'instagram', 'youtube', 'twitter', 'github', 'whatsapp']
   const socialRows = (isPhotoLeft ? socialOrder : Object.keys(socialInitial) as Array<keyof SignatureSocialLinks>).filter((key) => socials[key].trim()).map((key) => {
     const filled = brand.iconStyle === 'filled' || isPhotoLeft
@@ -265,8 +269,8 @@ export function generateEmailSignatureHtml(signature: EmailSignature, businessCa
   const customTextHtml = cta.customText.trim() ? `<tr><td style="padding-top:${Math.max(8, padding / 2)}px;color:${textColor};font:${Math.max(11, brand.detailsSize)}px/${Math.max(16, brand.detailsSize + 4)}px ${font};">${escapeHtml(cta.customText)}</td></tr>` : ''
   const disclaimerHtml = cta.disclaimer.trim() ? `<tr><td style="padding-top:${Math.max(8, padding / 2)}px;color:${secondaryTextColor};font:${Math.max(10, brand.detailsSize - 1)}px/${Math.max(15, brand.detailsSize + 3)}px ${font};">${escapeHtml(cta.disclaimer)}</td></tr>` : ''
   const standardIdentity = `${name ? `<tr><td style="padding:0;font:bold ${Math.max(16, Math.round(brand.nameSize))}px/${Math.max(21, Math.round(brand.nameSize) + 7)}px ${font};color:${primary};">${escapeHtml(name)}</td></tr>` : ''}${identity ? `<tr><td style="padding:3px 0 0;font:${Math.max(11, Math.round(brand.jobTitleSize))}px/${Math.max(18, Math.round(brand.jobTitleSize) + 6)}px ${font};color:${textColor};">${escapeHtml(identity)}</td></tr>` : ''}`
-  const photoRailSize = Math.max(48, Math.round(brand.photoSize))
-  const photoLeftRail = photo || logo ? `<td valign="top" width="${photoRailSize + Math.max(18, padding)}" style="width:${photoRailSize + Math.max(18, padding)}px;padding-right:${Math.max(18, padding)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">${photo ? `<tr><td style="padding:0 0 ${Math.max(18, Math.round(padding * .75))}px;">${photoImage}</td></tr>` : ''}${logo ? `<tr><td>${logoImage}</td></tr>` : ''}</table></td>` : ''
+  const photoRailSize = Math.max(48, Math.round(Math.max(brand.photoSize, brand.logoSize)))
+  const photoLeftRail = photo || secondaryImage ? `<td valign="top" width="${photoRailSize + Math.max(18, padding)}" style="width:${photoRailSize + Math.max(18, padding)}px;padding-right:${Math.max(18, padding)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">${photo ? `<tr><td style="padding:0 0 ${Math.max(18, Math.round(padding * .75))}px;">${photoImage}</td></tr>` : ''}${secondaryImage ? `<tr><td>${secondaryImageMarkup}</td></tr>` : ''}</table></td>` : ''
   const photoLeftIdentity = `${name ? `<tr><td style="padding:0;font:bold ${Math.max(22, Math.round(brand.nameSize))}px/${Math.max(28, Math.round(brand.nameSize) + 6)}px ${font};color:${textColor};">${escapeHtml(name)}</td></tr>` : ''}${identity ? `<tr><td style="padding:3px 0 0;font:${Math.max(14, Math.round(brand.jobTitleSize))}px/${Math.max(22, Math.round(brand.jobTitleSize) + 5)}px ${font};color:${textColor};">${escapeHtml(identity)}</td></tr>` : ''}${brand.showDivider ? `<tr><td style="padding:0 0 ${Math.max(16, Math.round(padding * .75))}px;border-bottom:${Math.max(1, Math.round(brand.dividerThickness))}px ${brand.dividerStyle} ${dividerColor};"></td></tr>` : ''}`
   const photoLeftDetails = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:${font};text-align:left;">${photoLeftIdentity}${contactRows ? `<tr><td style="padding-top:${Math.max(14, padding)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;text-align:left;">${contactRows}</table></td></tr>` : ''}${socialHtml}${ctaHtml}${bannerHtml}${customTextHtml}${disclaimerHtml}</table>`
   const photoLeftContent = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;border-collapse:collapse;font-family:${font};text-align:left;"><tr>${photoLeftRail}<td valign="top" width="${Math.max(220, 600 - photoRailSize - Math.max(18, padding))}" style="padding:0;">${photoLeftDetails}</td></tr></table>`
