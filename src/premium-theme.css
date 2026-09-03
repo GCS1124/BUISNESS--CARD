@@ -1692,3 +1692,11 @@ body,
   border-color: var(--ocean-200);
   background: var(--ocean-100);
 }
+
+/* Keep primary event actions readable over the darkest ocean surfaces. */
+.event-button.event-button-primary,
+.event-button.event-button-primary:hover,
+.event-button.event-button-primary:focus-visible,
+.event-button.event-button-primary svg {
+  color: #eaf2f3 !important;
+}
