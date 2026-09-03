@@ -145,6 +145,25 @@ button, input, select { font-family: inherit; }
   background: transparent;
 }
 
+/* Use the full desktop canvas so the dashboard does not collapse into a narrow
+   centered column on wide screens. Keep the two-column collection balanced as
+   the workspace grows, while the existing mobile rules take over below 840px. */
+@media (min-width: 841px) {
+  .dashboard-main {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .dashboard-content-grid {
+    grid-template-columns: minmax(0, 1.45fr) minmax(360px, .72fr);
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
 .dashboard-main::before {
   top: -210px;
   right: -155px;
