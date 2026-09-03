@@ -48,11 +48,13 @@ import {
 import { BrandLockup } from './BrandLockup'
 import { useBranding } from './BrandingProvider'
 import { businessCardScannerService, captureMethodLabel, downloadLeadsCsv, findPossibleDuplicate, parseQrPayload, temperatureLabel, validateLead } from '../lib/eventCapture'
+import { defaultCrmFieldMapping, loadCrmIntegrations, removeCrmIntegration, saveCrmIntegration } from '../lib/crmIntegrations'
 import { deleteRemoteEvent, deleteRemoteLead, emptyEventWorkspace, getEventStatus, loadPublicEvent, loadRemoteEventWorkspace, makeEventId, persistPublicLead, persistRemoteEventWorkspace, readEventWorkspace, readPublicEventFromLocal, writeEventWorkspace } from '../lib/eventStorage'
 import { makeId, slugify } from '../lib/storage'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { appPath } from '../lib/routing'
 import type { CardBundle, EventCampaign, EventLead, EventMember, EventMemberRole, EventQualifier, EventQualifierType, EventStatus, EventTag, EventType, EventWorkspace, LeadAsset, LeadNote, LeadTemperature } from '../lib/types'
+import type { CrmIntegration, CrmProviderId } from '../lib/crmIntegrations'
 
 export type EventPageView = 'dashboard' | 'new' | 'edit' | 'capture' | 'leads' | 'analytics' | 'report' | 'integrations'
 
@@ -208,7 +210,7 @@ export function EventLeadCapturePage({ user, view, eventId, bundles, onNavigate,
   if (view === 'leads' && activeEvent) return <EventProductShell active="leads" user={user} brandingName={branding.productName} eventId={activeEvent.id} onNavigate={onNavigate} online={online}><LeadListView event={activeEvent} leads={eventLeads} allEvents={workspace.events} tags={workspace.tags.filter((tag) => tag.eventId === activeEvent.id)} online={online} onOpenCapture={() => onNavigate('capture', activeEvent.id)} onUpdateLead={(lead) => saveLead(lead, 'update')} onDeleteLead={deleteLead} onAddNote={addNote} onExport={(leads) => downloadLeadsCsv(leads, eventNameById, tagNameById)} onToast={onToast} /></EventProductShell>
   if (view === 'analytics' && activeEvent) return <EventProductShell active="analytics" user={user} brandingName={branding.productName} eventId={activeEvent.id} onNavigate={onNavigate} online={online}><AnalyticsView event={activeEvent} leads={eventLeads} tags={workspace.tags.filter((tag) => tag.eventId === activeEvent.id)} members={workspace.members.filter((member) => member.eventId === activeEvent.id)} onExport={() => downloadLeadsCsv(eventLeads, eventNameById, tagNameById)} /></EventProductShell>
   if (view === 'report' && activeEvent) return <EventProductShell active="report" user={user} brandingName={branding.productName} eventId={activeEvent.id} onNavigate={onNavigate} online={online}><ReportView event={activeEvent} leads={eventLeads} tags={workspace.tags.filter((tag) => tag.eventId === activeEvent.id)} members={workspace.members.filter((member) => member.eventId === activeEvent.id)} onExport={() => downloadLeadsCsv(eventLeads, eventNameById, tagNameById)} /></EventProductShell>
-  if (view === 'integrations') return <EventProductShell active="integrations" user={user} brandingName={branding.productName} eventId={activeEvent?.id} onNavigate={onNavigate} online={online}><IntegrationsView /></EventProductShell>
+  if (view === 'integrations') return <EventProductShell active="integrations" user={user} brandingName={branding.productName} eventId={activeEvent?.id} onNavigate={onNavigate} online={online}><IntegrationsView userId={user.id} onToast={onToast} /></EventProductShell>
   return <EventProductShell active="events" user={user} brandingName={branding.productName} eventId={activeEvent?.id} onNavigate={onNavigate} online={online}><EventDashboardView user={user} events={workspace.events} leads={workspace.leads} members={workspace.members} tags={workspace.tags} remoteError={remoteError} syncing={syncing} onRetrySync={retrySync} onCreate={() => onNavigate('new')} onOpen={(event) => onNavigate('edit', event.id)} onCapture={startCapture} onLeads={(event) => onNavigate('leads', event.id)} onAnalytics={(event) => onNavigate('analytics', event.id)} onDelete={deleteEvent} onToast={onToast} /></EventProductShell>
 }
 
@@ -427,10 +429,137 @@ function ReportView({ event, leads, tags, members, onExport }: { event: EventCam
 function ReportStat({ label, value }: { label: string; value: string }) { return <div className="report-stat"><span>{label}</span><strong>{value}</strong></div> }
 function ReportSection({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) { return <section className="report-section"><div className="report-section-heading"><span>{icon}</span><h2>{title}</h2></div>{children}</section> }
 
-function IntegrationsView() {
-  const [provider, setProvider] = useState('')
-  const providers = [{ name: 'HubSpot', detail: 'Contacts, companies, campaign attribution', color: '#ff7a59' }, { name: 'Salesforce', detail: 'Leads, contacts, and campaign members', color: '#1d9bf0' }, { name: 'Pipedrive', detail: 'People, organizations, and activities', color: '#2d9f6f' }, { name: 'Zoho CRM', detail: 'Contacts and event campaign fields', color: '#e24d3c' }]
-  return <div className="event-page integrations-page"><header className="event-page-header"><div><p className="eyebrow">Event lead capture</p><h1>Connect the tools that close the loop.</h1><p>Keep CRM connections explicit, mapped, and reviewable by your team.</p></div><span className="integration-status-badge"><i /> No integrations connected</span></header><div className="event-alert event-alert-neutral"><CircleHelp size={16} /><span>There are no CRM credentials configured in this workspace. These connection points are ready for a real provider—nothing here simulates a sync.</span></div><section className="integration-provider-grid">{providers.map((item) => <article className="integration-provider" key={item.name}><span className="integration-logo" style={{ '--provider-color': item.color } as React.CSSProperties}>{item.name[0]}</span><div><h2>{item.name}</h2><p>{item.detail}</p></div><span className="integration-not-connected">Not connected</span><button className="event-button event-button-ghost event-button-wide" onClick={() => setProvider(item.name)}><Link2 size={14} /> Configure connection</button></article>)}</section><section className="event-panel mapping-panel"><div className="event-panel-heading"><span className="event-panel-icon"><Settings2 size={16} /></span><div><p className="eyebrow">Field mapping</p><h2>Define the handoff before connecting.</h2><p>Mappings are stored per provider once credentials are added.</p></div></div><div className="mapping-table"><div><span>Our field</span><span>CRM field</span><span>Sync direction</span></div>{[['First name', 'firstname'], ['Last name', 'lastname'], ['Company', 'company'], ['Email', 'email'], ['Lead temperature', 'lead_status'], ['Event name', 'campaign']].map(([source, target]) => <div key={source}><strong>{source}</strong><label><select defaultValue={target}><option>{target}</option><option>Not mapped</option><option>Custom field…</option></select></label><span className="mapping-direction">Review before sync</span></div>)}</div></section>{provider && <div className="event-modal-backdrop" onClick={() => setProvider('')}><section className="event-connection-modal" onClick={(event) => event.stopPropagation()}><button className="event-modal-close" onClick={() => setProvider('')} aria-label="Close"><X size={16} /></button><span className="integration-logo integration-logo-large" style={{ '--provider-color': providers.find((item) => item.name === provider)?.color } as React.CSSProperties}>{provider[0]}</span><p className="eyebrow">Connect provider</p><h2>{provider}</h2><p>Provider credentials are not configured in this app yet. When enabled, this connection will use a server-side adapter and never expose secrets in the browser.</p><div className="event-connection-points"><span><Check size={13} /> OAuth or server-side credentials</span><span><Check size={13} /> Reviewable field mapping</span><span><Check size={13} /> Retryable sync logs</span></div><button className="event-button event-button-primary event-button-wide" onClick={() => setProvider('')}>Got it</button></section></div>}</div>
+const crmProviders: Array<{ id: CrmProviderId; name: string; detail: string; color: string }> = [
+  { id: 'hubspot', name: 'HubSpot', detail: 'Contacts, companies, campaign attribution', color: '#ff7a59' },
+  { id: 'salesforce', name: 'Salesforce', detail: 'Leads, contacts, and campaign members', color: '#1d9bf0' },
+  { id: 'pipedrive', name: 'Pipedrive', detail: 'People, organizations, and activities', color: '#2d9f6f' },
+  { id: 'zoho', name: 'Zoho CRM', detail: 'Contacts and event campaign fields', color: '#e24d3c' },
+  { id: 'gohighlevel', name: 'GoHighLevel', detail: 'Contacts, tags, and pipeline opportunities', color: '#18a68d' },
+]
+
+const crmMappingRows: Array<[string, string]> = [
+  ['First name', 'firstName'],
+  ['Last name', 'lastName'],
+  ['Company', 'company'],
+  ['Email', 'email'],
+  ['Lead temperature', 'leadTemperature'],
+  ['Event name', 'eventName'],
+]
+
+interface IntegrationsViewProps {
+  userId: string
+  onToast: (message: string, tone?: 'success' | 'error') => void
+}
+
+function IntegrationsView({ userId, onToast }: IntegrationsViewProps) {
+  const [provider, setProvider] = useState<CrmProviderId | null>(null)
+  const [integrations, setIntegrations] = useState<Partial<Record<CrmProviderId, CrmIntegration>>>({})
+  const [mapping, setMapping] = useState<Record<string, string>>(defaultCrmFieldMapping)
+  const [form, setForm] = useState({ accountLabel: '', locationId: '', automaticSync: false })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    void loadCrmIntegrations(userId).then((result) => {
+      if (active) setIntegrations(result)
+    }).catch(() => {
+      if (active) setError('Saved provider settings could not be loaded. You can still configure this browser locally.')
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [userId])
+
+  const configuredCount = crmProviders.filter((item) => integrations[item.id]?.status === 'configured').length
+  const selectedProvider = crmProviders.find((item) => item.id === provider)
+  const selectedIntegration = provider ? integrations[provider] : undefined
+
+  const openProvider = (nextProvider: CrmProviderId) => {
+    const saved = integrations[nextProvider]
+    setProvider(nextProvider)
+    setForm({
+      accountLabel: saved?.settings.accountLabel ?? '',
+      locationId: saved?.settings.locationId ?? '',
+      automaticSync: saved?.settings.automaticSync ?? false,
+    })
+    setMapping({ ...defaultCrmFieldMapping, ...(saved?.fieldMapping ?? {}) })
+    setError('')
+  }
+
+  const closeProvider = () => {
+    setProvider(null)
+    setError('')
+  }
+
+  const saveProvider = async () => {
+    if (!provider || !selectedProvider) return
+    if (provider === 'gohighlevel' && !form.locationId.trim()) {
+      setError('Add the GoHighLevel Location ID before saving this setup.')
+      return
+    }
+    const value: CrmIntegration = {
+      provider,
+      status: 'configured',
+      settings: { ...form, accountLabel: form.accountLabel.trim(), locationId: form.locationId.trim() },
+      fieldMapping: mapping,
+    }
+    setSaving(true)
+    try {
+      await saveCrmIntegration(userId, value)
+      setIntegrations((current) => ({ ...current, [provider]: value }))
+      closeProvider()
+      onToast(`${selectedProvider.name} configuration saved`)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'The configuration could not be saved.')
+      onToast('Could not save integration configuration.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const disconnectProvider = async () => {
+    if (!provider || !selectedProvider) return
+    setSaving(true)
+    try {
+      await removeCrmIntegration(userId, provider)
+      setIntegrations((current) => {
+        const next = { ...current }
+        delete next[provider]
+        return next
+      })
+      closeProvider()
+      onToast(`${selectedProvider.name} setup removed`)
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'The integration setup could not be removed.')
+      onToast('Could not remove integration setup.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <div className="event-page integrations-page">
+    <header className="event-page-header">
+      <div><p className="eyebrow">Event lead capture</p><h1>Connect the tools that close the loop.</h1><p>Keep CRM connections explicit, mapped, and reviewable by your team.</p></div>
+      <span className="integration-status-badge"><i /> {configuredCount ? `${configuredCount} setup${configuredCount === 1 ? '' : 's'} saved` : 'No integrations configured'}</span>
+    </header>
+    <div className="event-alert event-alert-neutral"><CircleHelp size={16} /><span>{configuredCount ? 'Your provider setup is saved. Automatic sync remains off until a secure server-side adapter is enabled.' : 'Save the provider details your team will use. API secrets are never stored in this browser, and no sync is simulated.'}</span></div>
+    {error && !provider && <div className="event-alert event-alert-warning"><CircleHelp size={16} /><span>{error}</span></div>}
+    <section className="integration-provider-grid">
+      {loading ? <div className="integration-loading">Loading provider settings…</div> : crmProviders.map((item) => {
+        const saved = integrations[item.id]
+        return <article className={saved?.status === 'configured' ? 'integration-provider integration-provider-configured' : 'integration-provider'} key={item.id}>
+          <span className="integration-logo" style={{ '--provider-color': item.color } as React.CSSProperties}>{item.name[0]}</span>
+          <div><h2>{item.name}</h2><p>{item.detail}</p></div>
+          <span className={saved?.status === 'configured' ? 'integration-connected' : 'integration-not-connected'}>{saved?.status === 'configured' ? 'Setup saved' : 'Not connected'}</span>
+          <button className="event-button event-button-ghost event-button-wide" onClick={() => openProvider(item.id)}><Link2 size={14} /> {saved?.status === 'configured' ? 'Edit configuration' : 'Configure connection'}</button>
+        </article>
+      })}
+    </section>
+    <section className="event-panel mapping-panel"><div className="event-panel-heading"><span className="event-panel-icon"><Settings2 size={16} /></span><div><p className="eyebrow">Field mapping</p><h2>Define the handoff before connecting.</h2><p>Mappings are stored with each provider configuration.</p></div></div><div className="mapping-table"><div><span>Our field</span><span>CRM field</span><span>Sync direction</span></div>{crmMappingRows.map(([source, key]) => <div key={key}><strong>{source}</strong><label><select value={mapping[key] ?? 'Not mapped'} onChange={(event) => setMapping((current) => ({ ...current, [key]: event.target.value }))}><option value={defaultCrmFieldMapping[key]}>{defaultCrmFieldMapping[key]}</option><option value="Not mapped">Not mapped</option><option value="Custom field…">Custom field…</option></select></label><span className="mapping-direction">Review before sync</span></div>)}</div></section>
+    {provider && selectedProvider && <div className="event-modal-backdrop" onClick={closeProvider}><section className="event-connection-modal" onClick={(event) => event.stopPropagation()}><button className="event-modal-close" onClick={closeProvider} aria-label="Close"><X size={16} /></button><span className="integration-logo integration-logo-large" style={{ '--provider-color': selectedProvider.color } as React.CSSProperties}>{selectedProvider.name[0]}</span><p className="eyebrow">Provider configuration</p><h2>{selectedProvider.name}</h2><p>{provider === 'gohighlevel' ? 'Choose the GoHighLevel location that should receive event leads. Authentication is completed by your secure server-side adapter.' : `Save the ${selectedProvider.name} workspace details for your event lead handoff.`}</p><div className="integration-form-grid"><label className="integration-form-field"><span>Connection label</span><input value={form.accountLabel} onChange={(event) => setForm((current) => ({ ...current, accountLabel: event.target.value }))} placeholder="North America sales" /></label>{provider === 'gohighlevel' && <label className="integration-form-field"><span>Location ID <b>*</b></span><input value={form.locationId} onChange={(event) => setForm((current) => ({ ...current, locationId: event.target.value }))} placeholder="Your GoHighLevel location ID" required /></label>}<label className="integration-toggle"><input type="checkbox" checked={form.automaticSync} onChange={(event) => setForm((current) => ({ ...current, automaticSync: event.target.checked }))} /><span><strong>Prepare automatic lead sync</strong><small>Leads will remain reviewable until the server adapter is enabled.</small></span></label></div><p className="integration-security-note"><ShieldCheck size={14} /> API credentials are never stored in this browser.</p>{error && <p className="integration-form-error" role="alert">{error}</p>}<div className="event-connection-actions">{selectedIntegration && <button className="event-button event-button-danger" onClick={() => void disconnectProvider()} disabled={saving}>Remove setup</button>}<span /><button className="event-button event-button-ghost" onClick={closeProvider} disabled={saving}>Cancel</button><button className="event-button event-button-primary" onClick={() => void saveProvider()} disabled={saving}>{saving ? 'Saving…' : 'Save configuration'}</button></div></section></div>}
+  </div>
 }
 
 export function PublicEventLeadForm({ publicSlug }: { publicSlug: string }) {
