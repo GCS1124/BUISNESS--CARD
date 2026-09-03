@@ -3,9 +3,10 @@ import type { ReactNode } from 'react'
 import { ArrowLeft, Check, ChevronDown, Code2, Copy, Eye, FileSignature, Image, LayoutTemplate, Link2, LockKeyhole, Mail, Megaphone, Monitor, Paintbrush, Palette, Plus, Share2, Smartphone, Sparkles, Trash2, Upload, UserRound, X } from 'lucide-react'
 import { EmailSignaturePreview } from './EmailSignaturePreview'
 import { BrandLockup } from './BrandLockup'
-import { applyBusinessCardSnapshot, generateEmailSignatureHtml, generateEmailSignatureText, signatureFieldConfig, signatureTemplates, socialLinkConfig, templateBranding } from '../lib/signatures'
+import { applyBusinessCardSnapshot, generateEmailSignatureHtml, generateEmailSignatureText, signatureFieldConfig, signatureTemplateCategories, signatureTemplates, socialLinkConfig, templateBranding } from '../lib/signatures'
 import { appPath } from '../lib/routing'
 import type { AppUser, CardBundle, EmailSignature, SignatureBranding, SignatureContactDetails, SignatureCtaSettings, SignatureCtaType, SignatureSocialLinks } from '../lib/types'
+import type { SignatureTemplateCategory } from '../lib/signatures'
 
 interface EmailSignaturesPageProps {
   user?: AppUser
@@ -193,11 +194,20 @@ function DetailsSection({ signature, bundles, currentCard, onPatchContact, onPat
 }
 
 function TemplateSection({ signature, onSelect }: { signature: EmailSignature; onSelect: (templateId: string) => void }) {
-  return <div className="signature-section-content"><SectionIntro eyebrow="Template" title="Choose a layout with a point of view." description="Switch styles any time. Your details, links, and add-ons stay exactly where you left them." /><div className="signature-template-picker signature-template-picker-rich">{signatureTemplates.map((template) => <button className={`signature-template-option ${signature.templateId === template.id ? 'signature-template-option-active' : ''}`} key={template.id} onClick={() => onSelect(template.id)}><TemplateMiniPreview template={template} /><span className="signature-template-copy"><strong>{template.name}</strong><small>{template.description}</small></span>{signature.templateId === template.id && <Check size={15} />}</button>)}</div></div>
+  const [category, setCategory] = useState<'all' | SignatureTemplateCategory>('all')
+  const filteredTemplates = category === 'all' ? signatureTemplates : signatureTemplates.filter((template) => template.category === category)
+  const activeCategory = signatureTemplateCategories.find((item) => item.id === category) ?? signatureTemplateCategories[0]
+  return <div className="signature-section-content"><SectionIntro eyebrow="Template" title="Choose a layout with a point of view." description="Start with the exact two-image reference, or explore the expanded set of layouts below. Your details, links, and add-ons stay exactly where you left them." /><div className="signature-template-library-bar"><div><p className="eyebrow">Signature library</p><strong>{filteredTemplates.length} {filteredTemplates.length === 1 ? 'layout' : 'layouts'}</strong></div><span>{activeCategory.helper} · Click any card to apply it instantly.</span></div><div className="signature-template-category-tabs" role="tablist" aria-label="Filter signature templates">{signatureTemplateCategories.map((item) => <button key={item.id} className={category === item.id ? 'active' : ''} onClick={() => setCategory(item.id)} role="tab" aria-selected={category === item.id}>{item.label}<small>{item.id === 'all' ? signatureTemplates.length : signatureTemplates.filter((template) => template.category === item.id).length}</small></button>)}</div><div className="signature-template-picker signature-template-picker-rich">{filteredTemplates.map((template) => <button className={`signature-template-option ${signature.templateId === template.id ? 'signature-template-option-active' : ''}`} key={template.id} onClick={() => onSelect(template.id)}><TemplateMiniPreview template={template} signature={signature} /><span className="signature-template-copy"><strong>{template.name}</strong><small>{template.description}</small></span>{signature.templateId === template.id && <Check size={15} />}</button>)}</div></div>
 }
 
-function TemplateMiniPreview({ template }: { template: typeof signatureTemplates[number] }) {
-  return <span className="signature-template-mini-preview" style={{ background: template.swatches[1] }}><span className="signature-template-mini-mark signature-template-mini-mark-primary" style={{ background: template.swatches[0] }} />{template.id === 'executive' && <span className="signature-template-mini-mark signature-template-mini-mark-secondary" style={{ background: template.swatches[0] }} />}<i style={{ background: template.swatches[0] }} /><b style={{ background: template.swatches[0] }} /><em style={{ background: template.swatches[0] }} /></span>
+const templateDemoPhoto = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=240&q=80'
+const templateDemoLogo = 'https://dummyimage.com/240x240/000000/ffffff.png&text=MW'
+
+function TemplateMiniPreview({ template, signature }: { template: typeof signatureTemplates[number]; signature: EmailSignature }) {
+  const photo = signature.profileImageUrl || templateDemoPhoto
+  const logo = signature.companyLogoUrl || templateDemoLogo
+  const photoLayout = template.branding.layout === 'photo-left' || template.branding.layout === 'photo-right' || template.id === 'executive'
+  return <span className={`signature-template-mini-preview signature-template-mini-preview-${template.branding.layout ?? 'standard'}`} style={{ background: template.swatches[1] }}><span className="signature-template-mini-images"><img src={photo} alt="" /><img src={logo} alt="" /></span><span className="signature-template-mini-copy"><strong>Taylor Maxwell</strong><small>{photoLayout ? 'CEO' : 'CEO · Maxwell Inc'}</small>{photoLayout && <small>Maxwell Inc</small>}</span><span className="signature-template-mini-rule" style={{ background: template.swatches[0] }} /><span className="signature-template-mini-details"><i style={{ background: template.swatches[0] }} /><i style={{ background: template.swatches[0] }} /><i style={{ background: template.swatches[0] }} /></span></span>
 }
 
 function DesignSection({ branding, onPatch }: { branding: SignatureBranding; onPatch: (changes: Partial<SignatureBranding>) => void }) {

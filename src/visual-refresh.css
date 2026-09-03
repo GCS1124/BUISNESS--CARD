@@ -629,19 +629,33 @@ button, input, select { font-family: inherit; }
 .signature-subsection-heading > span { width: 26px; height: 26px; border-radius: 9px; background: linear-gradient(135deg,#eaf5f1,#f6f9fd); }
 .signature-section-content .signature-section-help { margin: -2px 0 1px; }
 .signature-template-picker-rich { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.signature-template-library-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 13px; border: 1px solid #dbe7f0; border-radius: 13px; background: linear-gradient(135deg,#f5faff,#f9fcff); }
+.signature-template-library-bar > div { display: grid; gap: 3px; }
+.signature-template-library-bar .eyebrow { margin: 0; color: #7590a7; }
+.signature-template-library-bar strong { color: #1f3d5c; font-size: 13px; }
+.signature-template-library-bar > span { color: #8a9aaa; font-size: 10px; text-align: right; }
+.signature-template-category-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.signature-template-category-tabs::-webkit-scrollbar { display: none; }
+.signature-template-category-tabs button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid #dfe8f1; border-radius: 999px; background: #fff; color: #7d8fa2; font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+.signature-template-category-tabs button:hover { border-color: #a8cdbf; color: #347460; }
+.signature-template-category-tabs button.active { border-color: #8bc0aa; background: #edf8f3; color: #17614f; box-shadow: 0 0 0 3px rgba(139,192,170,.1); }
+.signature-template-category-tabs button small { display: inline-grid; min-width: 17px; height: 17px; place-items: center; padding: 0 4px; border-radius: 999px; background: #f1f5f9; color: #9aabba; font-size: 8px; }
+.signature-template-category-tabs button.active small { background: #d2ebe0; color: #29725d; }
 .signature-template-option { min-height: 78px; padding: 10px; border-color: #dfe8f1; background: #fbfdff; }
 .signature-template-option:hover { border-color: #9bc7bb; background: #f3faf7; }
 .signature-template-option-active { border-color: #74b19b; background: #edf8f3; box-shadow: 0 0 0 3px rgba(116,177,155,.11); }
-.signature-template-mini-preview { position: relative; display: block; flex: 0 0 auto; width: 76px; height: 54px; overflow: hidden; border: 1px solid rgba(19,36,60,.08); border-radius: 9px; }
-.signature-template-mini-mark { position: absolute; left: 8px; width: 15px; height: 15px; border-radius: 50%; }
-.signature-template-mini-mark-primary { top: 8px; }
-.signature-template-mini-mark-secondary { top: 31px; opacity: .7; }
-.signature-template-mini-preview i,
-.signature-template-mini-preview b,
-.signature-template-mini-preview em { position: absolute; left: 30px; display: block; height: 3px; border-radius: 4px; opacity: .85; }
-.signature-template-mini-preview i { top: 11px; width: 32px; }
-.signature-template-mini-preview b { top: 19px; width: 24px; opacity: .38; }
-.signature-template-mini-preview em { top: 35px; left: 8px; width: 57px; opacity: .34; }
+.signature-template-mini-preview { display: grid; flex: 0 0 auto; grid-template-columns: 1fr; align-content: start; width: 76px; height: 54px; overflow: hidden; padding: 6px; border: 1px solid rgba(19,36,60,.08); border-radius: 9px; }
+.signature-template-mini-images { display: flex; align-items: center; gap: 3px; height: 19px; }
+.signature-template-mini-images img { width: 19px; height: 19px; overflow: hidden; border: 0; border-radius: 50%; object-fit: cover; }
+.signature-template-mini-images img + img { border-radius: 5px; }
+.signature-template-mini-copy { display: grid; gap: 1px; margin-top: 3px; min-width: 0; }
+.signature-template-mini-copy strong { overflow: hidden; color: #253b54; font-size: 6px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.signature-template-mini-copy small { overflow: hidden; color: #6f8499; font-size: 4px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.signature-template-mini-rule { width: 29px; height: 1px; margin-top: 3px; opacity: .55; }
+.signature-template-mini-details { display: flex; gap: 3px; margin-top: 4px; }
+.signature-template-mini-details i { display: block; width: 8px; height: 2px; border-radius: 2px; opacity: .72; }
+.signature-template-mini-preview-standard .signature-template-mini-images img + img { display: none; }
+.signature-template-mini-preview-photo-right .signature-template-mini-images { justify-content: flex-end; }
 .signature-template-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
 .signature-template-copy strong { color: #223b55; font-size: 11px; }
 .signature-template-copy small { overflow: hidden; color: #8c9caf; font-size: 9px; line-height: 1.35; text-overflow: ellipsis; }
@@ -782,6 +796,8 @@ button, input, select { font-family: inherit; }
   .signature-editor-layout { padding: 14px 10px 112px; }
   .signature-section-content { gap: 18px; padding: 17px; }
   .signature-section-intro h2 { font-size: 24px; }
+  .signature-template-library-bar { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .signature-template-library-bar > span { text-align: left; }
   .signature-color-grid, .signature-design-form-grid { grid-template-columns: 1fr; }
   .signature-add-social { align-items: flex-start; flex-wrap: wrap; }
   .signature-add-social select { width: 100%; }
