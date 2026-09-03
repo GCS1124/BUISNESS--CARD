@@ -87,6 +87,7 @@ const routeFromLocation = (): { route: AppRoute; id?: string; eventView?: EventP
   if (path.startsWith('/email-signatures')) return { route: 'email-signatures' }
   if (path.startsWith('/branding')) return { route: 'branding' }
   if (path.startsWith('/events/') && path.endsWith('/connect')) return { route: 'event-public', id: decodeURIComponent(path.split('/')[2] ?? '') }
+  if (path === '/event-lead-capture/integrations') return { route: 'event-lead-capture', eventView: 'integrations' }
   if (path === '/event-lead-capture' || path === '/events') return { route: 'event-lead-capture', eventView: 'dashboard' }
   if (path === '/events/new') return { route: 'event-lead-capture', eventView: 'new' }
   if (path.startsWith('/events/')) {
@@ -259,7 +260,7 @@ export default function App() {
   }, [])
 
   const navigate = (nextRoute: AppRoute, id?: string, nextEventView: EventPageView = 'dashboard') => {
-    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : nextRoute === 'email-signatures' ? '/email-signatures' : nextRoute === 'event-public' ? `/events/${id}/connect` : nextRoute === 'event-lead-capture' ? nextEventView === 'dashboard' ? '/event-lead-capture' : nextEventView === 'new' ? '/events/new' : `/events/${id}/${nextEventView}` : `/${nextRoute}`
+    const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : nextRoute === 'email-signatures' ? '/email-signatures' : nextRoute === 'event-public' ? `/events/${id}/connect` : nextRoute === 'event-lead-capture' ? nextEventView === 'dashboard' ? '/event-lead-capture' : nextEventView === 'new' ? '/events/new' : nextEventView === 'integrations' && !id ? '/event-lead-capture/integrations' : `/events/${id}/${nextEventView}` : `/${nextRoute}`
     window.history.pushState({}, '', appPath(path))
     setRoute(nextRoute)
     setRouteId(id)

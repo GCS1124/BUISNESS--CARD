@@ -41,6 +41,7 @@ Premium palette comparison: the workspace, builder, signatures, branding, and ev
 8. Card Health color refinement: replaced the single green spotlight palette with a contrasting sapphire and lime system while preserving the existing interaction hierarchy.
 9. Premium palette refinement: added a final theme layer so the full product uses the supplied deep blue-teal direction without changing layout, content, or interaction behavior.
 10. Shade-scale refinement: expanded the reference into a navy-to-ocean-to-slate-to-fog scale so surfaces, actions, accents, borders, and status details use related shades instead of one bright accent.
+11. Event navigation fix: removed the dead-end disabled state from the embedded event tabs. Setup now opens the new campaign editor, Integrations works without an event, and event-dependent tabs guide an empty workspace into setup.
 
 ## Implementation checklist
 
@@ -60,6 +61,7 @@ Premium palette comparison: the workspace, builder, signatures, branding, and ev
 - [x] Verify the recolored Card Health card in the local dashboard preview.
 - [x] Apply the muted blue-teal premium palette across dashboard, builder, signature, branding, and event surfaces.
 - [x] Use the reference image's full muted navy, ocean, slate, steel, and fog shade range across the product chrome.
+- [x] Verify Setup, Capture fallback, and Integrations navigation from an empty event workspace.
 - [x] Verify the updated dashboard, signature list, and event workspace palette in the local browser.
 - [x] Verify the local editor and preview in the browser.
 - [x] Run `npm run lint`, `npm run build`, and `git diff --check`.
