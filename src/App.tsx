@@ -57,6 +57,7 @@ import { createSeedBundle, defaultDesign, defaultUser, makeId, readLocalBundles,
 import { clearGuestSignature, readGuestSignature, readLocalSignatures, writeGuestSignature, writeLocalSignatures } from './lib/signatureStorage'
 import { createDefaultSignature, createGuestSignature, duplicateSignature, normalizeSignature } from './lib/signatures'
 import { deleteRemoteBundle, deleteRemoteSignature, isSupabaseConfigured, loadPublicBundle, loadRemoteBundles, loadRemoteSignatures, persistRemoteBundle, persistRemoteSignature, remoteCardUrl, supabase, uploadCardAsset } from './lib/supabase'
+import { appPath, pathInsideApp } from './lib/routing'
 import { cardTemplates } from './lib/templateCatalog'
 import type { CardTemplate } from './lib/templateCatalog'
 import type { AppUser, Card, CardBundle, CardField, DesignSettings, EmailSignature, FieldCategory, FieldDefinition, FieldType } from './lib/types'
@@ -75,7 +76,7 @@ const themePresets: Array<{ name: string; description: string; design: Partial<D
 ]
 
 const routeFromLocation = (): { route: AppRoute; id?: string; eventView?: EventPageView } => {
-  const path = window.location.pathname
+  const path = pathInsideApp(window.location.pathname)
   if (path === '/cards' || path.startsWith('/dashboard')) return { route: 'dashboard' }
   if (path.startsWith('/builder/')) return { route: 'builder', id: decodeURIComponent(path.split('/')[2] ?? '') }
   if (path.startsWith('/card/')) return { route: 'public', id: decodeURIComponent(path.split('/')[2] ?? '') }
@@ -259,7 +260,7 @@ export default function App() {
 
   const navigate = (nextRoute: AppRoute, id?: string, nextEventView: EventPageView = 'dashboard') => {
     const path = nextRoute === 'dashboard' ? '/cards' : nextRoute === 'builder' ? `/builder/${id}` : nextRoute === 'public' ? `/card/${id}` : nextRoute === 'email-signatures' ? '/email-signatures' : nextRoute === 'event-public' ? `/events/${id}/connect` : nextRoute === 'event-lead-capture' ? nextEventView === 'dashboard' ? '/event-lead-capture' : nextEventView === 'new' ? '/events/new' : `/events/${id}/${nextEventView}` : `/${nextRoute}`
-    window.history.pushState({}, '', path)
+    window.history.pushState({}, '', appPath(path))
     setRoute(nextRoute)
     setRouteId(id)
     if (nextRoute === 'event-lead-capture') setEventView(nextEventView)
@@ -465,12 +466,12 @@ interface DashboardProps {
 type WorkspaceSection = 'cards' | 'templates' | 'insights' | 'signatures' | 'branding' | 'events'
 
 function WorkspaceSidebar({ active, user, onCards, onOverview, onTemplates, onInsights, onSignatures, onBranding, onSignOut, onEvents }: { active: WorkspaceSection; user: AppUser; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onSignOut: () => void; onEvents?: () => void }) {
-  const goEvents = onEvents ?? (() => window.location.assign('/event-lead-capture'))
+  const goEvents = onEvents ?? (() => window.location.assign(appPath('/event-lead-capture')))
   return <aside className="sidebar"><BrandLockup /><div className="sidebar-label">Workspace</div><nav className="sidebar-nav" aria-label="Workspace navigation"><button className={`sidebar-link ${active === 'cards' ? 'sidebar-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={17} /> My cards</button><button className={`sidebar-link ${active === 'templates' ? 'sidebar-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={17} /> Templates</button><button className={`sidebar-link ${active === 'signatures' ? 'sidebar-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={17} /> Email signatures</button><button className={`sidebar-link ${active === 'insights' ? 'sidebar-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={17} /> Insights</button><button className={`sidebar-link ${active === 'events' ? 'sidebar-link-active' : ''}`} aria-current={active === 'events' ? 'page' : undefined} onClick={goEvents}><QrCode size={17} /> Event lead capture</button><button className={`sidebar-link ${active === 'branding' ? 'sidebar-link-active' : ''}`} aria-current={active === 'branding' ? 'page' : undefined} onClick={onBranding}><Settings2 size={17} /> Branding</button></nav><div className="sidebar-bottom"><div className="sidebar-tip"><Sparkles size={16} /><p><strong>Make it yours.</strong><span>Set the identity people see across your workspace.</span></p></div><button className="user-menu" onClick={onSignOut}><span className="avatar-small">{initials(user.name)}</span><span className="user-menu-copy"><strong>{user.name}</strong><span>{isSupabaseConfigured ? user.email : 'Demo workspace'}</span></span><LogOut size={15} /></button></div></aside>
 }
 
 function MobileWorkspaceNav({ active, onCards, onOverview, onTemplates, onInsights, onSignatures, onBranding, onCreate, onEvents }: { active: WorkspaceSection; onCards: () => void; onOverview: () => void; onTemplates: () => void; onInsights: () => void; onSignatures: () => void; onBranding: () => void; onCreate: () => void; onEvents?: () => void }) {
-  const goEvents = onEvents ?? (() => window.location.assign('/event-lead-capture'))
+  const goEvents = onEvents ?? (() => window.location.assign(appPath('/event-lead-capture')))
   return <nav className="mobile-bottom-nav" aria-label="Mobile workspace navigation"><button className={`mobile-bottom-link ${active === 'cards' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'cards' ? 'page' : undefined} onClick={onCards}><Grid2X2 size={16} /><span>Cards</span></button><button className={`mobile-bottom-link ${active === 'templates' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'templates' ? 'page' : undefined} onClick={onTemplates}><LayoutTemplate size={16} /><span>Templates</span></button><button className={`mobile-bottom-link ${active === 'signatures' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'signatures' ? 'page' : undefined} onClick={onSignatures}><Mail size={16} /><span>Signatures</span></button><button className={`mobile-bottom-link ${active === 'insights' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'insights' ? 'page' : undefined} onClick={onInsights}><Zap size={16} /><span>Insights</span></button><button className={`mobile-bottom-link ${active === 'events' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'events' ? 'page' : undefined} onClick={goEvents}><QrCode size={16} /><span>Events</span></button><button className={`mobile-bottom-link ${active === 'branding' ? 'mobile-bottom-link-active' : ''}`} aria-current={active === 'branding' ? 'page' : undefined} onClick={onBranding}><Settings2 size={16} /><span>Branding</span></button><button className="mobile-bottom-create" onClick={onCreate}><span><Plus size={18} /></span><small>New</small></button></nav>
 }
 

@@ -15,6 +15,24 @@ npm install
 npm run dev
 ```
 
+The app is configured to mount at `/cardly/`, including all internal routes and static assets. When running locally, open `http://localhost:5173/cardly/`.
+
+## Publish at globalcreativeservices.us/cardly
+
+The Cardly app is deployed at [`cardly-business-card-livid.vercel.app/cardly`](https://cardly-business-card-livid.vercel.app/cardly). The root `globalcreativeservices.us` site is currently WordPress-hosted on Bluehost, so the existing site must expose a WordPress page with the `cardly` slug. Add a Custom HTML block to that page with:
+
+```html
+<div style="width:100vw;margin-left:calc(50% - 50vw);">
+  <iframe
+    src="https://cardly-business-card-livid.vercel.app/cardly/"
+    title="Cardly"
+    style="display:block;width:100%;height:100vh;border:0;"
+  ></iframe>
+</div>
+```
+
+This preserves the existing homepage and makes the app available at `https://globalcreativeservices.us/cardly/`. The Vercel rewrites and app routing already support direct loads and refreshes for `/cardly/...` routes.
+
 Without environment variables, the app runs in local demo mode and stores cards in `localStorage`. To enable Supabase Auth, PostgreSQL persistence, public cards, and Storage uploads, copy `.env.example` to `.env.local` and set:
 
 ```bash

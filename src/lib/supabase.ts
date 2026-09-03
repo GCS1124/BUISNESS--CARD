@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { CardBundle, CardField, EmailSignature } from './types'
+import { appPath } from './routing'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
@@ -186,5 +187,5 @@ export async function uploadCardAsset(file: File, userId: string, kind: 'profile
 }
 
 export function remoteCardUrl(slug: string) {
-  return `${window.location.origin}/card/${slug}`
+  return `${window.location.origin}${appPath(`/card/${slug}`)}`
 }

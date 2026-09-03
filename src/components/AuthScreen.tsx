@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { ArrowRight, Check, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { appPath } from '../lib/routing'
 import { BrandLockup } from './BrandLockup'
 import { useBranding } from './BrandingProvider'
 import type { AppUser } from '../lib/types'
@@ -36,7 +37,7 @@ export function AuthScreen({ onDemo, onAuthenticated, variant = 'page', onClose,
         return
       }
       if (mode === 'forgot') {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}${appPath('/reset-password')}` })
         if (resetError) throw resetError
         setMessage('If an account exists for that email, a reset link is on its way.')
         return

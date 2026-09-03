@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    { "source": "/cardly/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/cardly/template-assets/(.*)", "destination": "/template-assets/$1" },
+    { "source": "/cardly", "destination": "/index.html" },
+    { "source": "/cardly/(.*)", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

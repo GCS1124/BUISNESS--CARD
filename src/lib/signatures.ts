@@ -209,7 +209,10 @@ export function generateEmailSignatureText(signature: EmailSignature) {
 }
 
 export function generateEmailSignatureHtml(signature: EmailSignature, businessCardUrl = '', options: { allowLocalImages?: boolean } = {}) {
-  const normalized = normalizeSignature(signature)
+  const baseSignature = normalizeSignature(signature)
+  const normalized = baseSignature.templateId === 'minimal' && baseSignature.branding.layout === 'standard'
+    ? { ...baseSignature, branding: templateBranding('minimal', baseSignature.branding) }
+    : baseSignature
   const { contactDetails: contact, visibleFields: visible, socialLinks: socials, branding: brand, ctaSettings: cta } = normalized
   const font = escapeHtml(safeFont(brand.fontFamily))
   const primary = safeColor(brand.primaryColor, defaultSignatureBranding.primaryColor)
@@ -244,8 +247,9 @@ export function generateEmailSignatureHtml(signature: EmailSignature, businessCa
     visible.email !== false ? detailRow('email', contact.email, contactHref(contact.email, 'email')) : '',
     visible.officeAddress !== false ? detailRow('address', contact.officeAddress) : '',
   ].filter(Boolean).join('')
-  const isPhotoLeft = brand.layout === 'photo-left'
-  const socialRows = (Object.keys(socialInitial) as Array<keyof SignatureSocialLinks>).filter((key) => socials[key].trim()).map((key) => {
+  const isPhotoLeft = brand.layout === 'photo-left' || normalized.templateId === 'minimal'
+  const socialOrder: Array<keyof SignatureSocialLinks> = ['linkedin', 'facebook', 'instagram', 'youtube', 'twitter', 'github', 'whatsapp']
+  const socialRows = (isPhotoLeft ? socialOrder : Object.keys(socialInitial) as Array<keyof SignatureSocialLinks>).filter((key) => socials[key].trim()).map((key) => {
     const filled = brand.iconStyle === 'filled' || isPhotoLeft
     const size = isPhotoLeft ? 42 : Math.max(18, Math.round(brand.iconSize) + 8)
     const iconMarkup = filled ? socialIcon(key) : socialInitial[key]
@@ -261,10 +265,12 @@ export function generateEmailSignatureHtml(signature: EmailSignature, businessCa
   const customTextHtml = cta.customText.trim() ? `<tr><td style="padding-top:${Math.max(8, padding / 2)}px;color:${textColor};font:${Math.max(11, brand.detailsSize)}px/${Math.max(16, brand.detailsSize + 4)}px ${font};">${escapeHtml(cta.customText)}</td></tr>` : ''
   const disclaimerHtml = cta.disclaimer.trim() ? `<tr><td style="padding-top:${Math.max(8, padding / 2)}px;color:${secondaryTextColor};font:${Math.max(10, brand.detailsSize - 1)}px/${Math.max(15, brand.detailsSize + 3)}px ${font};">${escapeHtml(cta.disclaimer)}</td></tr>` : ''
   const standardIdentity = `${name ? `<tr><td style="padding:0;font:bold ${Math.max(16, Math.round(brand.nameSize))}px/${Math.max(21, Math.round(brand.nameSize) + 7)}px ${font};color:${primary};">${escapeHtml(name)}</td></tr>` : ''}${identity ? `<tr><td style="padding:3px 0 0;font:${Math.max(11, Math.round(brand.jobTitleSize))}px/${Math.max(18, Math.round(brand.jobTitleSize) + 6)}px ${font};color:${textColor};">${escapeHtml(identity)}</td></tr>` : ''}`
-  const photoLeftRail = photo || logo ? `<td valign="top" style="width:${Math.max(48, Math.round(brand.photoSize))}px;padding-right:${Math.max(18, padding)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">${photo ? `<tr><td style="padding:0 0 ${Math.max(18, Math.round(padding * .75))}px;">${photoImage}</td></tr>` : ''}${logo ? `<tr><td>${logoImage}</td></tr>` : ''}</table></td>` : ''
+  const photoRailSize = Math.max(48, Math.round(brand.photoSize))
+  const photoLeftRail = photo || logo ? `<td valign="top" width="${photoRailSize + Math.max(18, padding)}" style="width:${photoRailSize + Math.max(18, padding)}px;padding-right:${Math.max(18, padding)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">${photo ? `<tr><td style="padding:0 0 ${Math.max(18, Math.round(padding * .75))}px;">${photoImage}</td></tr>` : ''}${logo ? `<tr><td>${logoImage}</td></tr>` : ''}</table></td>` : ''
   const photoLeftIdentity = `${name ? `<tr><td style="padding:0;font:bold ${Math.max(22, Math.round(brand.nameSize))}px/${Math.max(28, Math.round(brand.nameSize) + 6)}px ${font};color:${textColor};">${escapeHtml(name)}</td></tr>` : ''}${identity ? `<tr><td style="padding:3px 0 0;font:${Math.max(14, Math.round(brand.jobTitleSize))}px/${Math.max(22, Math.round(brand.jobTitleSize) + 5)}px ${font};color:${textColor};">${escapeHtml(identity)}</td></tr>` : ''}${brand.showDivider ? `<tr><td style="padding:0 0 ${Math.max(16, Math.round(padding * .75))}px;border-bottom:${Math.max(1, Math.round(brand.dividerThickness))}px ${brand.dividerStyle} ${dividerColor};"></td></tr>` : ''}`
-  const photoLeftContent = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:${font};text-align:left;"><tr>${photoLeftRail}<td valign="top" style="padding:0;">${photoLeftIdentity}${contactRows ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;text-align:left;padding-top:${Math.max(14, padding)}px;">${contactRows}</table>` : ''}${socialHtml}${ctaHtml}${bannerHtml}${customTextHtml}${disclaimerHtml}</td></tr></table>`
+  const photoLeftDetails = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:${font};text-align:left;">${photoLeftIdentity}${contactRows ? `<tr><td style="padding-top:${Math.max(14, padding)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;text-align:left;">${contactRows}</table></td></tr>` : ''}${socialHtml}${ctaHtml}${bannerHtml}${customTextHtml}${disclaimerHtml}</table>`
+  const photoLeftContent = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;border-collapse:collapse;font-family:${font};text-align:left;"><tr>${photoLeftRail}<td valign="top" width="${Math.max(220, 600 - photoRailSize - Math.max(18, padding))}" style="padding:0;">${photoLeftDetails}</td></tr></table>`
   const standardContent = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:${font};text-align:${align};"><tr>${brand.alignment === 'right' ? '' : imageHtml}<td valign="top" style="${divider}padding-left:${brand.showDivider && brand.alignment !== 'right' ? padding : 0};padding-right:${brand.showDivider && brand.alignment === 'right' ? padding : 0};"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;text-align:${align};">${logoHtml}${standardIdentity}${contactRows ? `<tr><td style="padding-top:${Math.max(8, padding / 2)}px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;text-align:${align};">${contactRows}</table></td></tr>` : ''}${socialHtml}${ctaHtml}${bannerHtml}${customTextHtml}${disclaimerHtml}</table></td>${brand.alignment === 'right' ? imageHtml : ''}</tr></table>`
-  const content = brand.layout === 'photo-left' ? photoLeftContent : standardContent
+  const content = isPhotoLeft ? photoLeftContent : standardContent
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;max-width:600px;font-family:${font};"><tr><td style="padding:0;">${content}</td></tr></table>`
 }
