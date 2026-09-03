@@ -3,6 +3,7 @@
 source visual target: `C:\Users\ANUSHI~1\AppData\Local\Temp\codex-clipboard-ab08e0b7-79b0-4f3c-a5b7-ea8b60f55b1a.png`
 delete confirmation source target: `C:\Users\ANUSHI~1\AppData\Local\Temp\codex-clipboard-079b5f4e-1d35-4266-aaf8-12aa49d188a4.png`
 card health color source target: `C:\Users\ANUSHI~1\AppData\Local\Temp\codex-clipboard-3585dd7b-21ce-41f9-ad28-042a885b04d0.png`
+premium palette reference: `C:\Users\ANUSHI~1\AppData\Local\Temp\codex-clipboard-15d6f7c2-6d81-4cd2-8f12-055dbb1ac409.png`
 previous preview state: `C:\Users\ANUSHI~1\AppData\Local\Temp\codex-clipboard-3523c6d3-2527-4149-bef8-fcd3dea026c5.png`
 implementation screenshot path: in-app browser capture of `http://localhost:5173/cardly/email-signatures` (browser tab 5)
 card health implementation capture: in-app browser capture of the local dashboard at `http://127.0.0.1:5174/cardly/cards` (browser tab 8)
@@ -21,6 +22,8 @@ Delete confirmation comparison: the delete action now opens a fixed, centered po
 
 Card Health color comparison: the Card Health spotlight keeps the reference layout, readiness score, checklist, status badge, progress bar, and actions, but now uses a midnight sapphire gradient with blue concentric detailing and a lime progress accent instead of the all-green treatment. The local dashboard preview was checked at mobile-width scale with a complete 100% card.
 
+Premium palette comparison: the workspace, builder, signatures, branding, and event surfaces now share a quieter deep ocean blue, muted teal, slate, soft fog, and low-contrast ivory system. High-chroma green surfaces were removed from the product chrome while keeping semantic destructive and status states distinguishable.
+
 ## Findings
 
 - No actionable P0/P1/P2 differences remain.
@@ -36,6 +39,8 @@ Card Health color comparison: the Card Health spotlight keeps the reference layo
 6. Template structure enhancement: added category filtering with counts and a clearer library summary while preserving the exact reference layout.
 7. Delete confirmation enhancement: fixed the list/editor render path and matched the confirmation popup to the supplied visual reference.
 8. Card Health color refinement: replaced the single green spotlight palette with a contrasting sapphire and lime system while preserving the existing interaction hierarchy.
+9. Premium palette refinement: added a final theme layer so the full product uses the supplied deep blue-teal direction without changing layout, content, or interaction behavior.
+10. Shade-scale refinement: expanded the reference into a navy-to-ocean-to-slate-to-fog scale so surfaces, actions, accents, borders, and status details use related shades instead of one bright accent.
 
 ## Implementation checklist
 
@@ -53,6 +58,9 @@ Card Health color comparison: the Card Health spotlight keeps the reference layo
 - [x] Verify Keep it dismissal and Delete signature completion in the local browser.
 - [x] Recolor the Card Health spotlight without changing its structure or actions.
 - [x] Verify the recolored Card Health card in the local dashboard preview.
+- [x] Apply the muted blue-teal premium palette across dashboard, builder, signature, branding, and event surfaces.
+- [x] Use the reference image's full muted navy, ocean, slate, steel, and fog shade range across the product chrome.
+- [x] Verify the updated dashboard, signature list, and event workspace palette in the local browser.
 - [x] Verify the local editor and preview in the browser.
 - [x] Run `npm run lint`, `npm run build`, and `git diff --check`.
 

@@ -8,6 +8,7 @@ import './signatures.css'
 import './branding.css'
 import './visual-refresh.css'
 import './event-lead-capture.css'
+import './premium-theme.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
